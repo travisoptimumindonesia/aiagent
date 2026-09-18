@@ -9,6 +9,8 @@ Repo private mandiri untuk portal siswa, ruang laoshi, latihan Hanzi, spaced rep
 - Akun admin/laoshi/siswa; akun dibuat admin. Password bcrypt, sesi server-side, cookie HttpOnly, CSRF, pembatasan login, dan pencabutan sesi.
 - Kelas dan akses siswa dengan tanggal kedaluwarsa. Admin mengaktifkan akses setelah pendaftaran/pembayaran dikonfirmasi di luar aplikasi.
 - Editor materi, kosakata, kuis pilihan ganda, draf/terbit, penilaian kuis di server, dan progres siswa. Nilai terbaik ≥70% menandai materi selesai.
+- Learning path bergaya aplikasi mobile dengan XP, level, target harian, streak, hearts, grafik tujuh hari, dan badge. Reward XP memakai event unik sehingga mengulang request/refresh tidak menggandakan hadiah.
+- Model freemium: akun Free mendapatkan 5 hearts yang pulih setiap hari dan kuota tutor terbatas; Premium mendapatkan hearts tanpa batas serta kuota AI lebih tinggi. Admin dapat mengaktifkan Premium 30 hari setelah pembayaran terkonfirmasi.
 - Hanzi Writer: animasi goresan, latihan sentuh dengan koreksi urutan, pinyin, data Hanzi lokal. Latihan dicatat sebagai latihan mandiri, bukan ujian terverifikasi.
 - TS-FSRS: kartu per siswa, due date tersimpan, pilihan Lagi/Sulit/Baik/Mudah, pemeriksaan versi untuk mencegah review ganda. Jadwal yang sama dipakai web dan WhatsApp.
 - Tutor percakapan dengan riwayat per akun dan batas penggunaan harian; memerlukan provider LLM yang kompatibel dengan `/chat/completions`.
@@ -18,20 +20,20 @@ Repo private mandiri untuk portal siswa, ruang laoshi, latihan Hanzi, spaced rep
 - WhatsApp resmi melalui Meta Cloud API dan PyWa: webhook bertanda tangan HMAC, deduplikasi ID, antrean persisten, percobaan kirim ulang, tautan akun sekali pakai, teks/foto/suara, dan review FSRS.
 - Docker Compose, HTTPS otomatis Caddy, volume persisten, health checks, backup/restore, serta tes otomatis.
 
-Materi bawaan hanya **3 contoh pemula**. Laoshi perlu meninjau dan menggantinya dengan kurikulum kursus. Ini bukan kurikulum HSK lengkap. Belum ada checkout pembayaran, kelas live/video, langganan otomatis, sertifikat, aplikasi native, atau pendaftaran publik.
+Materi bawaan hanya **3 contoh pemula**. Laoshi perlu meninjau dan menggantinya dengan kurikulum kursus. Ini bukan kurikulum HSK lengkap. Upgrade Premium saat ini diarahkan ke WhatsApp dan diaktifkan admin; belum ada payment gateway/langganan otomatis. Kelas live/video, sertifikat, aplikasi native, dan pendaftaran publik juga belum tersedia.
 
 ## Penggabungan keenam fork
 
 Aplikasi berada langsung di root repo ini. Komponen dari enam fork dipakai sesuai fungsinya. Situs Jekyll HanziGuide dan histori fork tidak disertakan; provenance dan lisensi tetap disimpan di `SOURCES.json` dan `licenses/`.
 
-| Fork milik akun | Penggunaan di aplikasi | Versi runtime |
-|---|---|---|
-| [hanziguide](https://github.com/travisoptimumindonesia/hanziguide) | Referensi awal alur latihan Hanzi; kode Jekyll tidak dibawa ke repo mandiri | Basis commit dalam [SOURCES.json](SOURCES.json) |
-| [hanzi-writer](https://github.com/travisoptimumindonesia/hanzi-writer) | Animasi dan latihan goresan pada web | npm 3.7.3 |
-| [hanzi-writer-data](https://github.com/travisoptimumindonesia/hanzi-writer-data) | Data goresan lokal | npm 2.0.1 |
-| [ts-fsrs](https://github.com/travisoptimumindonesia/ts-fsrs) | Penjadwalan review pada server | npm 5.4.2 |
-| [pywa](https://github.com/travisoptimumindonesia/pywa) | Pengiriman balasan dan pengambilan media WhatsApp | PyPI 4.4.0 |
-| [paddleocr](https://github.com/travisoptimumindonesia/paddleocr) | Layanan OCR opsional, CPU | PaddleOCR 3.3.2 / PaddlePaddle 3.2.2 |
+| Fork milik akun                                                                  | Penggunaan di aplikasi                                                      | Versi runtime                                   |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------- |
+| [hanziguide](https://github.com/travisoptimumindonesia/hanziguide)               | Referensi awal alur latihan Hanzi; kode Jekyll tidak dibawa ke repo mandiri | Basis commit dalam [SOURCES.json](SOURCES.json) |
+| [hanzi-writer](https://github.com/travisoptimumindonesia/hanzi-writer)           | Animasi dan latihan goresan pada web                                        | npm 3.7.3                                       |
+| [hanzi-writer-data](https://github.com/travisoptimumindonesia/hanzi-writer-data) | Data goresan lokal                                                          | npm 2.0.1                                       |
+| [ts-fsrs](https://github.com/travisoptimumindonesia/ts-fsrs)                     | Penjadwalan review pada server                                              | npm 5.4.2                                       |
+| [pywa](https://github.com/travisoptimumindonesia/pywa)                           | Pengiriman balasan dan pengambilan media WhatsApp                           | PyPI 4.4.0                                      |
+| [paddleocr](https://github.com/travisoptimumindonesia/paddleocr)                 | Layanan OCR opsional, CPU                                                   | PaddleOCR 3.3.2 / PaddlePaddle 3.2.2            |
 
 Dependensi runtime menggunakan rilis paket yang dikunci, **bukan otomatis mengambil perubahan terbaru dari fork**. Perubahan khusus pada fork perlu ditinjau dan diintegrasikan secara sengaja. Lihat [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); data Hanzi berlisensi Arphic, bukan MIT.
 
@@ -68,7 +70,11 @@ Isi `.env` sesuai dokumentasi provider:
 LLM_BASE_URL=https://alamat-provider/v1
 LLM_API_KEY=isi-di-server
 LLM_MODEL=model-yang-diaktifkan
-AI_DAILY_LIMIT=40
+AI_DAILY_LIMIT=10
+AI_PREMIUM_DAILY_LIMIT=100
+APP_TIMEZONE=Asia/Jakarta
+PREMIUM_PRICE_IDR=149000
+SALES_WHATSAPP=628xxxxxxxxxx
 ```
 
 `LLM_BASE_URL` adalah prefix sebelum `/chat/completions`; jangan sertakan endpoint itu dua kali. Adapter mengirim `messages`, `model`, `temperature`, dan `max_tokens`. Provider harus mendukung format ini. Tidak ada model atau layanan LLM lokal yang dibundel. Biaya/token mengikuti provider. Setelah mengisi, rebuild/restart dan coba dari menu Tutor Mandarin. Jangan menganggap status “terkonfigurasi” sebagai bukti koneksi berhasil.
@@ -125,7 +131,7 @@ bash scripts/restore.sh backups/mandarin-TANGGAL.tar.gz
 
 Siswa dapat menghapus percakapan dan tugasnya. Admin/laoshi dapat menghapus tugas dari portal. Retensi otomatis belum dijadwalkan; tentukan kebijakan kursus dan kelola backup yang mengandung data pribadi. Seluruh laoshi pada deployment ini dapat melihat seluruh siswa dan tugas; ini model satu lembaga, bukan multi-tenant.
 
-Untuk memperbarui kode: backup dahulu, `git pull --ff-only`, lalu deploy ulang. Jangan mengganti branch sembarang pada server. Jika upgrade mencakup perubahan schema, ikuti catatan migrasi rilis; schema awal ini versi 1.
+Untuk memperbarui kode: backup dahulu, `git pull --ff-only`, lalu deploy ulang. Jangan mengganti branch sembarang pada server. Jika upgrade mencakup perubahan schema, ikuti catatan migrasi rilis; schema saat ini versi 2.
 
 ## Pengembangan dan pengujian
 

@@ -2,14 +2,14 @@
 
 ## Konteks repo mandiri
 
-Source diuji ulang setelah dipindah ke struktur root: 12 tes Node dan 6 tes Python lulus. [GitHub Actions repo private](https://github.com/travisoptimumindonesia/aiagent/actions/runs/35359403709) juga menyelesaikan job `test` dan `containers` dengan hasil **success**: dependency dipasang ulang, tes dijalankan, image app/bridge dibangun, container dinyalakan, dan health check HTTP berhasil.
+Baseline repo private telah lulus workflow GitHub Actions. Setelah upgrade freemium/gamification, suite lokal terdiri dari 13 tes Node dan 6 tes Python; status workflow commit terbaru dicatat saat rilis.
 
 ## Dijalankan dan lulus
 
 [GitHub Actions](https://github.com/travisoptimumindonesia/hanziguide/actions/runs/35331320599) menyelesaikan job `test` dan `containers` dengan hasil **success** untuk commit aplikasi `32ea8805c0f65a60195288167049bae68dd91d4e`.
 
 - `npm run check`: pemeriksaan sintaks JavaScript aplikasi, worker, dan frontend.
-- `npm test`: **12 tes** API/integrasi/UI DOM.
+- `npm test`: **13 tes** API/integrasi/UI DOM, termasuk XP idempotent, hearts, Premium, dan halaman paket.
 - `python -m unittest discover -s test -p 'test_*.py' -v`: **6 tes** layanan Python.
 - `npm audit --omit=dev --audit-level=high`: **0 vulnerabilities** dilaporkan saat pemeriksaan; bukan jaminan bebas celah.
 - `bash -n` pada skrip setup/deploy/backup/restore. Smoke test setup juga memastikan password literal, permission `.env` 600, serta penolakan menimpa konfigurasi lama.

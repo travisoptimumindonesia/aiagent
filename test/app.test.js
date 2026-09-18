@@ -168,6 +168,52 @@ test('enrollment and expiry gate lessons, reviews and tutor; quiz answers stay s
   const d = await student.agent.get('/api/dashboard');
   assert.equal(d.body.progress[0].score, 100);
 });
+test('freemium gamification awards idempotent XP, consumes hearts and activates premium', async (t) => {
+  const { admin, account, mutate } = await fixture(t);
+  const student = await account('gamified');
+  const initial = await student.agent.get('/api/gamification').expect(200);
+  assert.equal(initial.body.xp, 0);
+  assert.equal(initial.body.hearts, 5);
+  assert.equal(initial.body.plan, 'free');
+
+  const failed = await mutate(student, 'post', '/api/lessons/1/quiz', {
+    answers: [0, 1],
+  }).expect(200);
+  assert.equal(failed.body.passed, false);
+  assert.equal(failed.body.gamification.hearts, 4);
+  assert.equal(failed.body.earnedXp, 0);
+
+  const passed = await mutate(student, 'post', '/api/lessons/1/quiz', {
+    answers: [1, 0],
+  }).expect(200);
+  assert.equal(passed.body.earnedXp, 35);
+  assert.equal(passed.body.gamification.xp, 35);
+  assert.equal(passed.body.gamification.streak, 1);
+  assert.equal(passed.body.gamification.goalComplete, true);
+
+  const repeated = await mutate(student, 'post', '/api/lessons/1/quiz', {
+    answers: [1, 0],
+  }).expect(200);
+  assert.equal(repeated.body.earnedXp, 0);
+  assert.equal(repeated.body.gamification.xp, 35);
+
+  const writing = await mutate(student, 'post', '/api/practice', {
+    hanzi: '你',
+    mistakes: 1,
+  }).expect(200);
+  assert.equal(writing.body.earnedXp, 5);
+  assert.equal(writing.body.gamification.xp, 40);
+
+  const until = new Date(Date.now() + 30 * 86400000).toISOString();
+  const upgraded = await mutate(admin, 'post', `/api/admin/users/${student.user.id}/plan`, {
+    plan: 'premium',
+    premium_until: until,
+  }).expect(200);
+  assert.equal(upgraded.body.gamification.plan, 'premium');
+  assert.equal(upgraded.body.gamification.hearts, null);
+  const plans = await student.agent.get('/api/plans').expect(200);
+  assert.equal(plans.body.current, 'premium');
+});
 test('FSRS cards are per-user, durable, deduplicated and reject stale/double reviews', async (t) => {
   const { ctx, account, mutate } = await fixture(t);
   const a = await account('a'),

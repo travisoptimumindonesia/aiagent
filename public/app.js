@@ -13,6 +13,7 @@ const icons = {
   chat: 'M4 4h16v12H9l-5 4z M8 8h8 M8 12h5',
   mic: 'M9 4a3 3 0 0 1 6 0v8a3 3 0 0 1-6 0z M6 10v2a6 6 0 0 0 12 0v-2 M12 18v4 M8 22h8',
   phone: 'M6 3h12v18H6z M10 18h4',
+  crown: 'M3 7l4 4 5-7 5 7 4-4-2 12H5z M6 22h12',
   users:
     'M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M2 21v-3a7 7 0 0 1 14 0v3 M17 4a3 3 0 0 1 0 6 M18 13a5 5 0 0 1 4 5v3',
   settings: 'M4 6h16 M4 12h16 M4 18h16 M8 3v6 M16 9v6 M10 15v6',
@@ -22,6 +23,7 @@ const icon = (n) =>
 let user,
   csrf,
   capabilities = {},
+  game = {},
   current = 'home',
   writer,
   reviewCards = [],
@@ -40,6 +42,7 @@ const nav = [
   ['tutor', 'Tutor Mandarin', 'chat'],
   ['tasks', 'Foto & pelafalan', 'mic'],
   ['whatsapp', 'WhatsApp', 'phone'],
+  ['premium', 'Premium', 'crown'],
   ['account', 'Akun saya', 'settings'],
 ];
 function toast(text) {
@@ -86,7 +89,15 @@ function shell() {
   const links = [...nav];
   if (user.role !== 'student') links.push(['staff', 'Ruang laoshi', 'users']);
   $('#app').innerHTML =
-    `<div class="shell"><aside class="sidebar">${brand}<nav class="nav" aria-label="Menu utama">${links.map(([id, label, i]) => `<a href="#${id}" data-nav="${id}">${icon(i)}${label}</a>`).join('')}</nav><div class="sidebar-bottom"><div class="user"><div class="avatar">${esc(user.name.slice(0, 1).toUpperCase())}</div><div><strong>${esc(user.name)}</strong><span class="small muted">${user.role === 'student' ? 'Siswa' : user.role === 'teacher' ? 'Laoshi' : 'Administrator'}</span></div></div><button class="link" data-action="logout">Keluar dari akun ↗</button></div></aside><main><header class="topbar"><span>我的课堂 <span class="muted">/ Ruang kelasku</span></span><span class="date">${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' })}</span></header><div id="content" class="content"></div></main></div>`;
+    `<div class="shell"><aside class="sidebar">${brand}<nav class="nav" aria-label="Menu utama">${links.map(([id, label, i]) => `<a href="#${id}" data-nav="${id}">${icon(i)}${label}</a>`).join('')}</nav><div class="sidebar-bottom"><div class="user"><div class="avatar">${esc(user.name.slice(0, 1).toUpperCase())}</div><div><strong>${esc(user.name)}</strong><span class="small muted">${user.role === 'student' ? 'Siswa' : user.role === 'teacher' ? 'Laoshi' : 'Administrator'}</span></div></div><button class="link" data-action="logout">Keluar dari akun ↗</button></div></aside><main><header class="topbar"><span>我的课堂 <span class="muted">/ Ruang kelasku</span></span><div class="game-strip"><a href="#premium" class="game-chip fire" title="Streak"><span>🔥</span><strong id="chrome-streak">${game.streak || 0}</strong></a><a href="#home" class="game-chip xp" title="XP"><span>⚡</span><strong id="chrome-xp">${game.xp || 0}</strong></a><a href="#premium" class="game-chip hearts" title="Hearts"><span>♥</span><strong id="chrome-hearts">${game.hearts === null ? '∞' : (game.hearts ?? 5)}</strong></a><span class="date">${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' })}</span></div></header><div id="content" class="content"></div></main></div>`;
+}
+function syncGame(next) {
+  if (!next) return;
+  game = next;
+  if ($('#chrome-streak')) $('#chrome-streak').textContent = game.streak || 0;
+  if ($('#chrome-xp')) $('#chrome-xp').textContent = game.xp || 0;
+  if ($('#chrome-hearts'))
+    $('#chrome-hearts').textContent = game.hearts === null ? '∞' : game.hearts;
 }
 function stopRecording() {
   clearTimeout(recordTimer);
@@ -117,6 +128,7 @@ async function route() {
         tutor,
         tasks,
         whatsapp,
+        premium,
         staff,
         account,
       }[current] || home
@@ -135,27 +147,41 @@ async function route() {
 async function home() {
   const d = await api('/dashboard'),
     passed = d.progress.filter((p) => p.score >= 70).length;
+  syncGame(d.gamification);
   const next =
     d.lessons.find((l) => !d.progress.some((p) => p.lesson_id === l.id && p.score >= 70)) ||
     d.lessons[0];
+  const goal = Math.min(100, Math.round((game.todayXp / game.dailyGoalXp) * 100));
+  const unlockedBadges = game.achievements.filter((a) => a.unlocked).length;
   return (
     head(
       `你好, ${user.name.split(' ')[0]}!`,
-      'Satu latihan hari ini, satu langkah lebih percaya diri.',
+      game.goalComplete
+        ? 'Target harian selesai. Hebat—pertahankan ritmenya!'
+        : `${Math.max(0, game.dailyGoalXp - game.todayXp)} XP lagi untuk menuntaskan target hari ini.`,
+      game.plan === 'premium' ? 'PREMIUM · 全力学习' : 'FREE · 每天进步',
     ) +
-    `<section class="hero"><div class="hero-copy"><div class="eyebrow">Perjalanan belajarmu</div><h2>Mandarin terasa lebih dekat,<br>satu kata setiap hari.</h2><p>${next ? 'Lanjutkan kelas, latih goresan, dan coba percakapan pertamamu.' : 'Admin kursus akan mengaktifkan kelas untuk akunmu.'}</p><a class="btn lime" href="#${next ? 'lessons/' + next.id : 'lessons'}">${next ? 'Lanjut belajar' : 'Lihat kelas'} <span>↗</span></a></div><div class="hero-hanzi" aria-hidden="true">学<small>XUÉ · BELAJAR</small></div></section><div class="stats"><div class="stat"><span class="label">Materi lulus</span><div class="number">${passed}<span class="small muted"> / ${d.lessons.length}</span></div><span class="kicker">Langkah demi langkah</span></div><div class="stat"><span class="label">Kartu hari ini</span><div class="number">${d.due}</div><a class="link small" href="#review">Mulai review →</a></div><div class="stat"><span class="label">Latihan Hanzi</span><div class="number">${d.practice}</div><span class="kicker">Goresan yang bertumbuh</span></div></div><div class="grid"><section class="panel"><div class="panel-head"><h2>Perjalanan kelas</h2><a class="link" href="#lessons">Semua materi ↗</a></div>${
+    `<section class="hero game-hero"><div class="hero-copy"><div class="eyebrow">Level ${game.level} · ${game.xp} total XP</div><h2>${next ? 'Pelajaran berikutnya sudah menunggumu.' : 'Perjalanan Mandarin dimulai dari sini.'}</h2><p>${next ? `Jaga streak ${game.streak} hari dan kumpulkan XP dari kuis, Hanzi, speaking, serta review.` : 'Admin kursus akan mengaktifkan kelas untuk akunmu.'}</p><a class="btn lime" href="#${next ? 'lessons/' + next.id : 'lessons'}">${next ? 'Mulai sesi hari ini' : 'Lihat kelas'} <span>→</span></a></div><div class="hero-hanzi" aria-hidden="true">学<small>XUÉ · BELAJAR</small></div></section><section class="mission-card"><div class="mission-copy"><span class="mission-icon">⚡</span><div><strong>Target harian</strong><p>${game.todayXp} / ${game.dailyGoalXp} XP ${game.goalComplete ? '· 完成!' : ''}</p></div></div><div class="progress-track"><span style="width:${goal}%"></span></div><strong class="mission-percent">${goal}%</strong></section><div class="stats game-stats"><div class="stat"><span class="label">Streak</span><div class="number">🔥 ${game.streak}</div><span class="kicker">Terbaik ${game.longestStreak} hari</span></div><div class="stat"><span class="label">Hearts</span><div class="number hearts-value">${game.hearts === null ? '∞' : '♥'.repeat(game.hearts)}</div><a class="link small" href="#premium">${game.plan === 'premium' ? 'Premium aktif' : 'Isi penuh tiap hari'}</a></div><div class="stat"><span class="label">Pencapaian</span><div class="number">${unlockedBadges}<span class="small muted"> / ${game.achievements.length}</span></div><span class="kicker">Badge terbuka</span></div></div><div class="dashboard-grid"><section class="panel path-panel"><div class="panel-head"><div><span class="eyebrow">Learning path</span><h2>Jalur belajarmu</h2></div><a class="link" href="#lessons">Lihat semua →</a></div>${
       d.lessons.length
         ? d.lessons
             .slice(0, 5)
-            .map((l, i) => lessonRow(l, i, d.progress))
+            .map((l, i) => pathNode(l, i, d.progress))
             .join('')
         : '<div class="empty">Belum ada kelas aktif. Hubungi admin kursus.</div>'
-    }</section><aside class="panel"><div class="panel-head"><h2>Satu karakter hari ini</h2><span class="pill">写字</span></div><div class="day-character"><div class="hanzi">好</div><div class="pinyin">hǎo</div><p class="small muted">baik · bagus</p></div><div class="note">Mulai pelan, perhatikan urutan goresan, lalu coba tanpa bantuan.</div><a href="#practice/好" class="btn outline full">Latih karakter ini →</a></aside></div><p class="footer-note">每天进步一点点 · Kemajuan kecil tetap berarti.</p>`
+    }</section><aside class="stack"><section class="panel"><div class="panel-head"><h2>Aktivitas 7 hari</h2><span class="pill">${game.xp} XP</span></div><div class="week-chart">${game.week.map((w) => `<div title="${esc(w.day)} · ${w.xp} XP"><span style="height:${Math.max(8, Math.min(100, w.xp * 3))}%"></span><small>${new Date(w.day + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'narrow' })}</small></div>`).join('')}</div></section><section class="panel"><div class="panel-head"><h2>Badge</h2><span class="pill">${unlockedBadges}/${game.achievements.length}</span></div><div class="badge-grid">${game.achievements.map((a) => `<div class="achievement ${a.unlocked ? 'unlocked' : ''}"><span>${a.unlocked ? '★' : '☆'}</span><small>${esc(a.label)}</small></div>`).join('')}</div></section><section class="panel daily-character"><div class="panel-head"><h2>Karakter hari ini</h2><span class="pill">写字</span></div><div class="day-character"><div class="hanzi">好</div><div class="pinyin">hǎo</div><p class="small muted">baik · bagus</p></div><a href="#practice/好" class="btn outline full">+5 XP · Latih sekarang</a></section></aside></div><p class="footer-note">每天进步一点点 · Kemajuan kecil tetap berarti.</p>`
   );
 }
 function lessonRow(l, i, progress = []) {
   const p = progress.find((x) => x.lesson_id === l.id);
   return `<div class="lesson-row"><div class="lesson-no">${['一', '二', '三', '四', '五', '六'][i % 6]}</div><div class="body"><h3>${esc(l.title)}</h3><p>${p ? `Kuis terbaik: ${p.score}%${p.score >= 70 ? ' · Selesai' : ' · Yuk coba lagi'}` : 'Baca · Tulis · Dengarkan · Latihan'}</p></div><a href="#lessons/${l.id}" class="btn secondary small">${p?.score >= 70 ? 'Ulangi' : 'Mulai'} →</a></div>`;
+}
+function pathNode(l, i, progress = []) {
+  const p = progress.find((x) => x.lesson_id === l.id);
+  const completed = p?.score >= 70;
+  const previousDone =
+    i === 0 || progress.some((x) => x.lesson_id === Number(l.id) - 1 && x.score >= 70);
+  const state = completed ? 'done' : previousDone ? 'current' : 'upcoming';
+  return `<a class="path-node ${state}" href="#lessons/${l.id}"><span class="path-dot">${completed ? '✓' : i + 1}</span><span class="path-copy"><strong>${esc(l.title)}</strong><small>${completed ? `${p.score}% · Selesai` : state === 'current' ? '+25 XP · Mulai sekarang' : 'Bisa dipelajari setelah materi sebelumnya'}</small></span><span class="path-arrow">${state === 'upcoming' ? '○' : '›'}</span></a>`;
 }
 async function lessons(id) {
   if (!id) {
@@ -285,10 +311,25 @@ function whatsapp() {
     `<div class="grid equal"><section class="panel"><div class="panel-head"><h2>Hubungkan akunmu</h2><span class="pill ${user.phone ? '' : 'warn'}">${user.phone ? 'Terhubung' : 'Belum terhubung'}</span></div>${user.phone ? `<p class="muted">Nomor aktif: +${esc(user.phone)}</p><button class="btn outline mt" data-action="unlink">Putuskan tautan</button>` : `<p class="muted small">Buat kode pribadi, lalu kirim dari nomor WhatsApp yang ingin dipakai belajar. Kode berlaku 10 menit dan hanya sekali pakai.</p><label class="check mt"><input id="wa-consent" type="checkbox"><span>Saya setuju pesan dan latihan WhatsApp saya diproses layanan AI kursus dan dapat ditinjau laoshi.</span></label><button class="btn mt" data-action="link-wa">Buat kode penghubung →</button><div id="wa-code" class="mt"></div>`}${!capabilities.whatsapp ? '<div class="notice">Nomor WhatsApp kursus belum diaktifkan oleh admin. Kamu tetap bisa belajar melalui portal.</div>' : ''}</section><aside class="panel"><h2>Latihan yang bisa kamu kirim</h2><ol class="steps"><li>Teks Mandarin untuk latihan percakapan dan koreksi kalimat.</li><li>Kirim <strong>/latihan 你好</strong>, lalu foto tulisan atau rekaman membaca target.</li><li>Kirim <strong>/kartu</strong> untuk review kosakata yang sudah kamu simpan.</li></ol><div class="note">Kirim /bantuan untuk melihat perintah. Hasil tugas foto/suara dan koreksi laoshi tersimpan di menu Foto & pelafalan.</div></aside></div>`
   );
 }
+async function premium() {
+  const p = await api('/plans');
+  const money = new Intl.NumberFormat('id-ID').format(p.price);
+  const premiumActive = p.current === 'premium';
+  return (
+    head(
+      premiumActive ? 'Premium aktif' : 'Belajar lebih bebas',
+      premiumActive
+        ? 'Semua benefit Premium sudah aktif di akunmu.'
+        : 'Mulai gratis. Upgrade hanya saat ritme belajarmu membutuhkan lebih banyak.',
+      premiumActive ? '会员 · PREMIUM' : 'FREEMIUM · 无压力',
+    ) +
+    `<section class="premium-hero"><div><span class="premium-crown">冠</span><div class="eyebrow">Mandarin Premium</div><h2>Latihan lebih sering.<br>Progress lebih terukur.</h2><p>Hearts tanpa batas, tutor AI lebih banyak, dan prioritas koreksi speaking.</p></div><div class="premium-price"><span>Mulai dari</span><strong>Rp${money}</strong><small>/ bulan</small></div></section><div class="plan-grid"><section class="plan-card ${!premiumActive ? 'current' : ''}"><div class="plan-title"><div><span class="eyebrow">Mulai belajar</span><h2>Gratis</h2></div>${!premiumActive ? '<span class="pill">Paketmu</span>' : ''}</div><div class="plan-price"><strong>Rp0</strong><span>selamanya</span></div><ul class="feature-list">${p.free.map((x) => `<li><span>✓</span>${esc(x)}</li>`).join('')}</ul><a class="btn secondary full" href="#home">Lanjutkan belajar</a></section><section class="plan-card featured ${premiumActive ? 'current' : ''}"><div class="best-value">PALING LENGKAP</div><div class="plan-title"><div><span class="eyebrow">Belajar serius</span><h2>Premium</h2></div>${premiumActive ? '<span class="pill">Aktif</span>' : ''}</div><div class="plan-price"><strong>Rp${money}</strong><span>per bulan</span></div><ul class="feature-list">${p.premium.map((x) => `<li><span>✓</span>${esc(x)}</li>`).join('')}</ul>${premiumActive ? '<a class="btn lime full" href="#home">Premium sudah aktif ✓</a>' : p.checkoutUrl ? `<a class="btn lime full" target="_blank" rel="noopener" href="${esc(p.checkoutUrl)}">Upgrade via WhatsApp →</a>` : '<button class="btn lime full" disabled>Hubungi admin untuk upgrade</button>'}<p class="plan-note">Aktivasi dilakukan admin setelah pembayaran terkonfirmasi. Tidak ada perpanjangan otomatis tersembunyi.</p></section></div><section class="panel mt"><div class="panel-head"><h2>Kenapa sistemnya seperti ini?</h2><span class="pill">Transparan</span></div><div class="benefit-grid"><div><strong>🔥 Konsisten</strong><p>Streak dan target harian menjaga ritme tanpa memaksa belajar lama.</p></div><div><strong>⚡ Terukur</strong><p>XP diberikan dari aktivitas nyata dan tidak dapat digandakan dengan refresh.</p></div><div><strong>♥ Tetap manusiawi</strong><p>Paket gratis tetap berguna. Premium menghilangkan batas, bukan menyembunyikan materi.</p></div></div></section>`
+  );
+}
 function account() {
   return (
     head('Akun saya', 'Atur akses pribadi dan keamanan akunmu.') +
-    `<div class="grid equal"><section class="panel"><h2>${esc(user.name)}</h2><p class="muted mt">${esc(user.email)}</p><p class="small muted">${esc(user.role)}</p><button class="btn outline mt" data-action="logout">Keluar dari akun</button></section><section class="panel"><h2>Ganti kata sandi</h2><form id="password-form"><div class="field"><label for="old-password">Kata sandi saat ini</label><input id="old-password" name="current" type="password" autocomplete="current-password" required></div><div class="field"><label for="new-password">Kata sandi baru</label><input id="new-password" name="password" type="password" minlength="12" maxlength="72" autocomplete="new-password" required><small>Minimal 12 karakter. Setelah diganti, masuk kembali.</small></div><button class="btn">Simpan kata sandi</button></form></section></div>`
+    `<div class="grid equal"><section class="panel profile-card"><div class="avatar large">${esc(user.name.slice(0, 1).toUpperCase())}</div><h2>${esc(user.name)}</h2><p class="muted mt">${esc(user.email)}</p><div class="row mt"><span class="pill">Level ${game.level || 1}</span><span class="pill">${game.plan === 'premium' ? 'Premium' : 'Free'}</span><span class="pill">${game.xp || 0} XP</span></div><a class="btn outline mt" href="#premium">Kelola paket</a><button class="link mt" data-action="logout">Keluar dari akun</button></section><section class="panel"><h2>Ganti kata sandi</h2><form id="password-form"><div class="field"><label for="old-password">Kata sandi saat ini</label><input id="old-password" name="current" type="password" autocomplete="current-password" required></div><div class="field"><label for="new-password">Kata sandi baru</label><input id="new-password" name="password" type="password" minlength="12" maxlength="72" autocomplete="new-password" required><small>Minimal 12 karakter. Setelah diganti, masuk kembali.</small></div><button class="btn">Simpan kata sandi</button></form></section></div>`
   );
 }
 async function staff() {
@@ -297,10 +338,10 @@ async function staff() {
   const d = staffData;
   return (
     head('Ruang laoshi', 'Kelola kelas, pantau siswa, dan berikan arahan berikutnya.') +
-    `<div class="stats"><div class="stat"><div class="label">Siswa</div><div class="number">${d.users.filter((u) => u.role === 'student').length}</div></div><div class="stat"><div class="label">Materi terbit</div><div class="number">${d.lessons.filter((l) => l.published).length}</div></div><div class="stat"><div class="label">Akses kelas</div><div class="number">${d.enrollments.length}</div></div></div><section class="panel mb"><div class="panel-head"><h2>Siswa & perkembangan</h2><a class="btn secondary small" href="#tasks">Periksa tugas →</a></div><div class="table-wrap"><table><thead><tr><th>Nama</th><th>Status</th><th>Kelas</th><th>Materi lulus</th>${user.role === 'admin' ? '<th>Kelola</th>' : ''}</tr></thead><tbody>${d.users
+    `<div class="stats"><div class="stat"><div class="label">Siswa</div><div class="number">${d.users.filter((u) => u.role === 'student').length}</div></div><div class="stat"><div class="label">Materi terbit</div><div class="number">${d.lessons.filter((l) => l.published).length}</div></div><div class="stat"><div class="label">Member Premium</div><div class="number">${d.users.filter((u) => u.plan === 'premium').length}</div></div></div><section class="panel mb"><div class="panel-head"><h2>Siswa & perkembangan</h2><a class="btn secondary small" href="#tasks">Periksa tugas →</a></div><div class="table-wrap"><table><thead><tr><th>Nama</th><th>Paket & XP</th><th>Kelas</th><th>Materi lulus</th>${user.role === 'admin' ? '<th>Kelola</th>' : ''}</tr></thead><tbody>${d.users
       .map(
         (u) =>
-          `<tr><td>${esc(u.name)}<small>${esc(u.email)} · ${esc(u.role)}</small></td><td>${u.active ? 'Aktif' : 'Nonaktif'}</td><td>${
+          `<tr><td>${esc(u.name)}<small>${esc(u.email)} · ${u.active ? 'Aktif' : 'Nonaktif'} · ${esc(u.role)}</small></td><td><span class="pill ${u.plan === 'premium' ? '' : 'warn'}">${u.plan === 'premium' ? 'Premium' : 'Free'}</span><small>${u.xp} XP · 🔥 ${u.streak}</small></td><td>${
             d.enrollments
               .filter((e) => e.user_id === u.id)
               .map(
@@ -308,7 +349,7 @@ async function staff() {
                   `${esc(d.courses.find((c) => c.id === e.course_id)?.title)}<small>${e.expires ? 'Sampai ' + date(e.expires) : 'Tanpa batas waktu'} ${user.role === 'admin' ? `<button class="link" data-action="unenroll" data-user="${u.id}" data-course="${e.course_id}">Cabut</button>` : ''}</small>`,
               )
               .join('') || '—'
-          }</td><td>${d.progress.filter((p) => p.user_id === u.id && p.score >= 70).length}</td>${user.role === 'admin' ? `<td>${u.id !== user.id ? `<button class="link" data-action="toggle-user" data-id="${u.id}" data-active="${u.active ? 'false' : 'true'}">${u.active ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="link" data-action="reset-password" data-id="${u.id}">Reset sandi</button>` : '—'}</td>` : ''}</tr>`,
+          }</td><td>${d.progress.filter((p) => p.user_id === u.id && p.score >= 70).length}</td>${user.role === 'admin' ? `<td>${u.id !== user.id ? `<button class="link" data-action="set-plan" data-id="${u.id}" data-plan="${u.plan === 'premium' ? 'free' : 'premium'}">${u.plan === 'premium' ? 'Jadikan Free' : 'Aktifkan Premium'}</button><button class="link" data-action="toggle-user" data-id="${u.id}" data-active="${u.active ? 'false' : 'true'}">${u.active ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="link" data-action="reset-password" data-id="${u.id}">Reset sandi</button>` : '—'}</td>` : ''}</tr>`,
       )
       .join('')}</tbody></table></div><div id="reset-password-panel"></div></section>${
       user.role === 'admin'
@@ -384,14 +425,17 @@ document.addEventListener('submit', async (e) => {
       const d = await api('/login', b);
       user = d.user;
       csrf = d.csrf;
-      capabilities = (await api('/me')).capabilities;
+      const me = await api('/me');
+      capabilities = me.capabilities;
+      game = me.gamification;
       shell();
       await route();
     } else if (f.id === 'quiz-form') {
       const answers = [...f.querySelectorAll('fieldset')].map((_, i) => Number(b['q' + i]));
       const r = await api(`/lessons/${f.dataset.id}/quiz`, { answers });
+      syncGame(r.gamification);
       $('#quiz-result').innerHTML =
-        `<div class="feedback"><strong>Hasil: ${r.score}% · ${r.passed ? 'Materi selesai!' : 'Coba lagi, kamu bisa.'}</strong><p>${r.corrections.map((q, i) => `Nomor ${i + 1}: ${q.correct ? '✓ Benar' : `jawaban ${q.answer + 1}`}`).join(' · ')}</p></div>`;
+        `<div class="feedback"><strong>Hasil: ${r.score}% · ${r.passed ? 'Materi selesai!' : 'Coba lagi, kamu bisa.'}</strong>${r.earnedXp ? `<div class="xp-earned">+${r.earnedXp} XP</div>` : ''}<p>${r.corrections.map((q, i) => `Nomor ${i + 1}: ${q.correct ? '✓ Benar' : `jawaban ${q.answer + 1}`}`).join(' · ')}</p></div>`;
     } else if (f.id === 'character-form') loadWriter(b.character.trim());
     else if (f.id === 'chat-form') {
       const text = b.text.trim();
@@ -408,9 +452,10 @@ document.addEventListener('submit', async (e) => {
       if (b.kind === 'audio' && recordedBlob) data.set('file', recordedBlob, 'recording.webm');
       if (!data.get('file')?.size) throw new Error('Pilih file atau rekam suara terlebih dahulu.');
       $('#upload-result').textContent = 'Menyimpan dan memeriksa latihan…';
-      await api('/submissions', data);
+      const saved = await api('/submissions', data);
+      syncGame(saved.gamification);
       stopRecording();
-      toast('Latihan tersimpan.');
+      toast(`Latihan tersimpan. +${saved.earnedXp || 0} XP`);
       await route();
     } else if (f.classList.contains('feedback-form')) {
       await api(`/submissions/${f.dataset.id}/feedback`, {
@@ -515,8 +560,9 @@ document.addEventListener('click', async (e) => {
             $('#practice-feedback').textContent =
               `完成！Selesai dengan ${d.totalMistakes} kesalahan.`;
           try {
-            await api('/practice', { hanzi: c, mistakes: d.totalMistakes });
-            toast('Latihan tersimpan!');
+            const saved = await api('/practice', { hanzi: c, mistakes: d.totalMistakes });
+            syncGame(saved.gamification);
+            toast(`Latihan tersimpan! +${saved.earnedXp} XP`);
           } catch (err) {
             toast(err.message);
           }
@@ -533,10 +579,11 @@ document.addEventListener('click', async (e) => {
       const c = reviewCards[reviewIndex];
       $$('#ratings button').forEach((b) => (b.disabled = true));
       try {
-        await api('/reviews/' + c.id, {
+        const rated = await api('/reviews/' + c.id, {
           rating: Number(el.dataset.rating),
           version: c.version,
         });
+        syncGame(rated.gamification);
         reviewIndex++;
         renderCard();
       } catch (err) {
@@ -578,6 +625,22 @@ document.addEventListener('click', async (e) => {
     if (a === 'remove-question') el.closest('.editor-question').remove();
     if (a === 'toggle-user' && confirm('Ubah status akses akun ini?')) {
       await api('/admin/users/' + el.dataset.id, { active: el.dataset.active === 'true' }, 'PATCH');
+      await route();
+    }
+    if (
+      a === 'set-plan' &&
+      confirm(
+        el.dataset.plan === 'premium'
+          ? 'Aktifkan Premium untuk 30 hari? Pastikan pembayaran sudah terkonfirmasi.'
+          : 'Kembalikan akun ini ke paket Free?',
+      )
+    ) {
+      await api(`/admin/users/${el.dataset.id}/plan`, {
+        plan: el.dataset.plan,
+        premium_until:
+          el.dataset.plan === 'premium' ? new Date(Date.now() + 30 * 86400000).toISOString() : null,
+      });
+      toast(el.dataset.plan === 'premium' ? 'Premium aktif selama 30 hari.' : 'Paket Free aktif.');
       await route();
     }
     if (a === 'reset-password') {
@@ -651,6 +714,7 @@ try {
   user = d.user;
   csrf = d.csrf;
   capabilities = d.capabilities;
+  game = d.gamification;
   shell();
   await route();
 } catch {

@@ -68,6 +68,106 @@ export function createApp(env = process.env, overrides = {}) {
     throw new Error('PUBLIC_URL wajib HTTPS pada produksi.');
   const db = overrides.db || openDB(env.DB_PATH || path.join(root, 'data/app.sqlite'));
   seed(db, env);
+  const timeZone = env.APP_TIMEZONE || 'Asia/Jakarta';
+  const localDay = (date = new Date()) => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const get = (type) => parts.find((p) => p.type === type)?.value;
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  };
+  const shiftDay = (day, amount) => {
+    const date = new Date(`${day}T12:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + amount);
+    return date.toISOString().slice(0, 10);
+  };
+  function ensureStats(userId) {
+    db.prepare('INSERT OR IGNORE INTO learner_stats(user_id) VALUES(?)').run(userId);
+    const day = localDay();
+    const stats = db.prepare('SELECT * FROM learner_stats WHERE user_id=?').get(userId);
+    if (stats.last_heart_refill !== day) {
+      db.prepare(
+        'UPDATE learner_stats SET hearts=max_hearts,last_heart_refill=? WHERE user_id=?',
+      ).run(day, userId);
+      return db.prepare('SELECT * FROM learner_stats WHERE user_id=?').get(userId);
+    }
+    return stats;
+  }
+  const premiumActive = (stats) =>
+    stats.plan === 'premium' && (!stats.premium_until || stats.premium_until > now());
+  function awardXp(userId, amount, type, eventKey, counters = {}) {
+    ensureStats(userId);
+    const inserted = db
+      .prepare('INSERT OR IGNORE INTO xp_events(user_id,event_key,event_type,xp) VALUES(?,?,?,?)')
+      .run(userId, eventKey, type, amount);
+    if (!inserted.changes) return 0;
+    const day = localDay();
+    const stats = db.prepare('SELECT * FROM learner_stats WHERE user_id=?').get(userId);
+    let streak = stats.streak;
+    if (stats.last_activity_day !== day)
+      streak = stats.last_activity_day === shiftDay(day, -1) ? stats.streak + 1 : 1;
+    db.prepare(
+      'UPDATE learner_stats SET xp=xp+?,streak=?,longest_streak=max(longest_streak,?),last_activity_day=? WHERE user_id=?',
+    ).run(amount, streak, streak, day, userId);
+    db.prepare(
+      `INSERT INTO daily_activity(user_id,day,xp,lessons,reviews,practice) VALUES(?,?,?,?,?,?)
+       ON CONFLICT(user_id,day) DO UPDATE SET xp=xp+excluded.xp,lessons=lessons+excluded.lessons,
+       reviews=reviews+excluded.reviews,practice=practice+excluded.practice`,
+    ).run(
+      userId,
+      day,
+      amount,
+      counters.lessons || 0,
+      counters.reviews || 0,
+      counters.practice || 0,
+    );
+    return amount;
+  }
+  function gamification(userId) {
+    const stats = ensureStats(userId);
+    const day = localDay();
+    const activity = db
+      .prepare('SELECT * FROM daily_activity WHERE user_id=? AND day=?')
+      .get(userId, day) || { xp: 0, lessons: 0, reviews: 0, practice: 0 };
+    const week = Array.from({ length: 7 }, (_, i) => shiftDay(day, i - 6)).map((date) => ({
+      day: date,
+      xp:
+        db.prepare('SELECT xp FROM daily_activity WHERE user_id=? AND day=?').get(userId, date)
+          ?.xp || 0,
+    }));
+    const level = Math.floor(stats.xp / 250) + 1;
+    const completed = db
+      .prepare('SELECT count(*) n FROM progress WHERE user_id=? AND score>=70')
+      .get(userId).n;
+    const practiceCount = db
+      .prepare('SELECT count(*) n FROM practice WHERE user_id=?')
+      .get(userId).n;
+    return {
+      xp: stats.xp,
+      level,
+      levelXp: stats.xp % 250,
+      nextLevelXp: 250,
+      hearts: premiumActive(stats) ? null : stats.hearts,
+      maxHearts: stats.max_hearts,
+      streak: stats.streak,
+      longestStreak: stats.longest_streak,
+      dailyGoalXp: stats.daily_goal_xp,
+      todayXp: activity.xp,
+      goalComplete: activity.xp >= stats.daily_goal_xp,
+      plan: premiumActive(stats) ? 'premium' : 'free',
+      premiumUntil: stats.premium_until,
+      week,
+      achievements: [
+        { id: 'first', label: 'Langkah Pertama', unlocked: completed >= 1 },
+        { id: 'streak7', label: 'Api 7 Hari', unlocked: stats.longest_streak >= 7 },
+        { id: 'writer10', label: 'Tangan Terlatih', unlocked: practiceCount >= 10 },
+        { id: 'xp500', label: 'Pejuang 500 XP', unlocked: stats.xp >= 500 },
+      ],
+    };
+  }
   const service = overrides.providers || providers(env);
   const uploads = path.resolve(env.UPLOAD_DIR || path.join(root, 'data/uploads'));
   mkdirSync(uploads, { recursive: true });
@@ -225,15 +325,21 @@ export function createApp(env = process.env, overrides = {}) {
   }
   function charge(user) {
     learning(user);
-    const day = now().slice(0, 10);
+    const day = localDay();
     tx(db, () => {
+      const stats = ensureStats(user.id);
       const used =
         db.prepare('SELECT count FROM usage WHERE user_id=? AND day=?').get(user.id, day)?.count ||
         0;
-      if (used >= Number(env.AI_DAILY_LIMIT || 40))
+      const limit = premiumActive(stats)
+        ? Number(env.AI_PREMIUM_DAILY_LIMIT || 100)
+        : Number(env.AI_DAILY_LIMIT || 10);
+      if (used >= limit)
         fail(
           429,
-          'Batas latihan AI harian tercapai. Silakan lanjut besok atau minta review laoshi.',
+          premiumActive(stats)
+            ? 'Batas tutor AI hari ini tercapai. Silakan lanjut besok atau minta review laoshi.'
+            : 'Batas tutor gratis hari ini tercapai. Lanjut besok atau upgrade ke Premium.',
         );
       db.prepare(
         'INSERT INTO usage(user_id,day,count) VALUES(?,?,1) ON CONFLICT(user_id,day) DO UPDATE SET count=count+1',
@@ -283,6 +389,7 @@ export function createApp(env = process.env, overrides = {}) {
       user: safeUser(req.user),
       csrf: req.csrf,
       capabilities: service.capabilities(),
+      gamification: gamification(req.user.id),
     }),
   );
   app.post('/api/logout', auth, (req, res) => {
@@ -322,7 +429,39 @@ export function createApp(env = process.env, overrides = {}) {
     const practice = db
       .prepare('SELECT count(*) n FROM practice WHERE user_id=?')
       .get(req.user.id).n;
-    res.json({ courses, lessons, progress, due, practice });
+    res.json({
+      courses,
+      lessons,
+      progress,
+      due,
+      practice,
+      gamification: gamification(req.user.id),
+    });
+  });
+  app.get('/api/gamification', auth, (req, res) => res.json(gamification(req.user.id)));
+  app.get('/api/plans', auth, (req, res) => {
+    const stats = gamification(req.user.id);
+    const price = Math.max(0, Number(env.PREMIUM_PRICE_IDR || 149000));
+    const phone = String(env.SALES_WHATSAPP || env.WA_PUBLIC_NUMBER || '').replace(/\D/g, '');
+    const message = `Halo admin, saya ${req.user.name} (${req.user.email}) ingin upgrade Mandarin Premium.`;
+    res.json({
+      current: stats.plan,
+      price,
+      currency: 'IDR',
+      checkoutUrl: phone ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : null,
+      free: [
+        'Semua materi gratis yang diaktifkan',
+        '5 hearts per hari',
+        `${Number(env.AI_DAILY_LIMIT || 10)} sesi tutor AI/hari`,
+        'XP, streak, dan review FSRS',
+      ],
+      premium: [
+        'Hearts tanpa batas',
+        `${Number(env.AI_PREMIUM_DAILY_LIMIT || 100)} sesi tutor AI/hari`,
+        'Hingga 100 tugas foto/suara per hari',
+        'XP, streak, dan laporan kemajuan',
+      ],
+    });
   });
   app.get('/api/lessons/:id', auth, (req, res) => {
     const l = lessonFor(req.user, Number(req.params.id));
@@ -332,6 +471,9 @@ export function createApp(env = process.env, overrides = {}) {
   app.post('/api/lessons/:id/quiz', auth, (req, res) => {
     const l = lessonFor(req.user, Number(req.params.id)),
       quiz = JSON.parse(l.quiz);
+    const beforeStats = ensureStats(req.user.id);
+    if (req.user.role === 'student' && !premiumActive(beforeStats) && beforeStats.hearts <= 0)
+      fail(429, 'Hearts habis. Coba lagi besok atau upgrade ke Premium untuk hearts tanpa batas.');
     const b = z
       .object({
         answers: z.array(z.number().int().min(0).max(5)).length(quiz.length),
@@ -342,10 +484,26 @@ export function createApp(env = process.env, overrides = {}) {
       answer: q.answer,
     }));
     const score = Math.round((100 * corrections.filter((x) => x.correct).length) / quiz.length);
-    db.prepare(
-      'INSERT INTO progress VALUES(?,?,?,?) ON CONFLICT(user_id,lesson_id) DO UPDATE SET score=max(score,excluded.score),completed_at=excluded.completed_at',
-    ).run(req.user.id, l.id, score, now());
-    res.json({ score, corrections, passed: score >= 70 });
+    let earnedXp = 0;
+    tx(db, () => {
+      db.prepare(
+        'INSERT INTO progress VALUES(?,?,?,?) ON CONFLICT(user_id,lesson_id) DO UPDATE SET score=max(score,excluded.score),completed_at=excluded.completed_at',
+      ).run(req.user.id, l.id, score, now());
+      if (score >= 70) {
+        earnedXp += awardXp(req.user.id, 25, 'lesson', `lesson:${l.id}`, { lessons: 1 });
+        if (score === 100) earnedXp += awardXp(req.user.id, 10, 'perfect_quiz', `perfect:${l.id}`);
+      } else if (req.user.role === 'student' && !premiumActive(beforeStats))
+        db.prepare('UPDATE learner_stats SET hearts=max(0,hearts-1) WHERE user_id=?').run(
+          req.user.id,
+        );
+    });
+    res.json({
+      score,
+      corrections,
+      passed: score >= 70,
+      earnedXp,
+      gamification: gamification(req.user.id),
+    });
   });
   app.post('/api/lessons/:id/cards', auth, (req, res) => {
     const l = lessonFor(req.user, Number(req.params.id));
@@ -400,12 +558,15 @@ export function createApp(env = process.env, overrides = {}) {
         next.card.due.toISOString(),
         c.id,
       );
-      db.prepare(
-        'INSERT INTO reviews(user_id,card_id,rating,log,created_at) VALUES(?,?,?,?,?)',
-      ).run(req.user.id, c.id, b.rating, JSON.stringify(next.log), now());
-      return { due: next.card.due, version: c.version + 1 };
+      const review = db
+        .prepare('INSERT INTO reviews(user_id,card_id,rating,log,created_at) VALUES(?,?,?,?,?)')
+        .run(req.user.id, c.id, b.rating, JSON.stringify(next.log), now());
+      const earnedXp = awardXp(req.user.id, 2, 'review', `review:${review.lastInsertRowid}`, {
+        reviews: 1,
+      });
+      return { due: next.card.due, version: c.version + 1, earnedXp };
     });
-    res.json(result);
+    res.json({ ...result, gamification: gamification(req.user.id) });
   });
   app.get('/api/pinyin', auth, (req, res) => {
     const text = z.string().min(1).max(80).parse(req.query.text);
@@ -419,12 +580,13 @@ export function createApp(env = process.env, overrides = {}) {
         mistakes: z.number().int().min(0).max(1000),
       })
       .parse(req.body);
-    db.prepare('INSERT INTO practice(user_id,hanzi,mistakes) VALUES(?,?,?)').run(
-      req.user.id,
-      b.hanzi,
-      b.mistakes,
-    );
-    res.json({ ok: true });
+    const saved = db
+      .prepare('INSERT INTO practice(user_id,hanzi,mistakes) VALUES(?,?,?)')
+      .run(req.user.id, b.hanzi, b.mistakes);
+    const earnedXp = awardXp(req.user.id, 5, 'hanzi', `practice:${saved.lastInsertRowid}`, {
+      practice: 1,
+    });
+    res.json({ ok: true, earnedXp, gamification: gamification(req.user.id) });
   });
   async function chat(user, text) {
     charge(user);
@@ -495,13 +657,21 @@ export function createApp(env = process.env, overrides = {}) {
   }
   async function submit(user, file, kind, target) {
     learning(user);
+    const stats = ensureStats(user.id);
     const mime = validateFile(file, kind);
     const count = db
       .prepare(
         "SELECT count(*) n FROM submissions WHERE user_id=? AND created_at>=datetime('now','-1 day')",
       )
       .get(user.id).n;
-    if (count >= 30) fail(429, 'Maksimal 30 tugas per hari.');
+    const submissionLimit = premiumActive(stats) ? 100 : 10;
+    if (count >= submissionLimit)
+      fail(
+        429,
+        premiumActive(stats)
+          ? 'Maksimal 100 tugas per hari.'
+          : 'Batas 10 tugas gratis hari ini tercapai. Lanjut besok atau upgrade ke Premium.',
+      );
     const filename = randomUUID();
     writeFileSync(path.join(uploads, filename), file.buffer, { mode: 0o600 });
     const id = Number(
@@ -547,7 +717,13 @@ export function createApp(env = process.env, overrides = {}) {
       status,
       id,
     );
-    return { id, status, result };
+    const earnedXp = awardXp(
+      user.id,
+      10,
+      kind === 'image' ? 'writing' : 'speaking',
+      `submission:${id}`,
+    );
+    return { id, status, result, earnedXp, gamification: gamification(user.id) };
   }
   const upload = multer({
     storage: multer.memoryStorage(),
@@ -623,7 +799,14 @@ export function createApp(env = process.env, overrides = {}) {
     res.json({ ok: true });
   });
   app.get('/api/staff', auth, staff, (req, res) => {
-    const users = db.prepare('SELECT id,name,email,role,active,phone FROM users ORDER BY id').all();
+    const users = db
+      .prepare(
+        `SELECT u.id,u.name,u.email,u.role,u.active,u.phone,
+          CASE WHEN s.plan='premium' AND (s.premium_until IS NULL OR s.premium_until>?) THEN 'premium' ELSE 'free' END plan,
+          s.premium_until,coalesce(s.xp,0) xp,coalesce(s.streak,0) streak
+         FROM users u LEFT JOIN learner_stats s ON s.user_id=u.id ORDER BY u.id`,
+      )
+      .all(now());
     const progress = db
       .prepare('SELECT p.*,l.title FROM progress p JOIN lessons l ON l.id=p.lesson_id')
       .all();
@@ -686,6 +869,24 @@ export function createApp(env = process.env, overrides = {}) {
     db.prepare('DELETE FROM sessions WHERE user_id=?').run(id);
     audit(req.user, 'update_user', id);
     res.json({ ok: true });
+  });
+  app.post('/api/admin/users/:id/plan', auth, admin, (req, res) => {
+    const b = z
+      .object({
+        plan: z.enum(['free', 'premium']),
+        premium_until: z.iso.datetime().nullable(),
+      })
+      .parse(req.body);
+    const id = Number(req.params.id);
+    if (!db.prepare('SELECT id FROM users WHERE id=?').get(id)) fail(404, 'Akun tidak ditemukan.');
+    ensureStats(id);
+    db.prepare('UPDATE learner_stats SET plan=?,premium_until=? WHERE user_id=?').run(
+      b.plan,
+      b.plan === 'premium' ? b.premium_until : null,
+      id,
+    );
+    audit(req.user, 'update_plan', `${id}:${b.plan}`);
+    res.json({ ok: true, gamification: gamification(id) });
   });
   app.post('/api/admin/enrollments', auth, admin, (req, res) => {
     const b = z

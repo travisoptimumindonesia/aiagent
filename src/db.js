@@ -38,9 +38,25 @@ export function openDB(file) {
       created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS usage(user_id INTEGER REFERENCES users,day TEXT NOT NULL,count INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY(user_id,day));
+    CREATE TABLE IF NOT EXISTS learner_stats(user_id INTEGER PRIMARY KEY REFERENCES users ON DELETE CASCADE,
+      xp INTEGER NOT NULL DEFAULT 0, hearts INTEGER NOT NULL DEFAULT 5, max_hearts INTEGER NOT NULL DEFAULT 5,
+      streak INTEGER NOT NULL DEFAULT 0, longest_streak INTEGER NOT NULL DEFAULT 0,
+      last_activity_day TEXT, last_heart_refill TEXT, daily_goal_xp INTEGER NOT NULL DEFAULT 20,
+      plan TEXT NOT NULL DEFAULT 'free' CHECK(plan IN ('free','premium')),
+      premium_until TEXT, streak_freezes INTEGER NOT NULL DEFAULT 0);
+    CREATE TABLE IF NOT EXISTS xp_events(id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL REFERENCES users ON DELETE CASCADE,
+      event_key TEXT NOT NULL,event_type TEXT NOT NULL,xp INTEGER NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id,event_key));
+    CREATE TABLE IF NOT EXISTS daily_activity(user_id INTEGER NOT NULL REFERENCES users ON DELETE CASCADE,
+      day TEXT NOT NULL,xp INTEGER NOT NULL DEFAULT 0,lessons INTEGER NOT NULL DEFAULT 0,
+      reviews INTEGER NOT NULL DEFAULT 0,practice INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY(user_id,day));
     CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,actor INTEGER,action TEXT NOT NULL,subject TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
-    PRAGMA user_version=1;`);
+    CREATE INDEX IF NOT EXISTS idx_xp_events_user_created ON xp_events(user_id,created_at);
+    CREATE INDEX IF NOT EXISTS idx_daily_activity_user_day ON daily_activity(user_id,day);
+    INSERT OR IGNORE INTO learner_stats(user_id) SELECT id FROM users;
+    PRAGMA user_version=2;`);
   return db;
 }
 export function tx(db, fn) {

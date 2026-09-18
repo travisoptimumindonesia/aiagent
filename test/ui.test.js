@@ -89,6 +89,9 @@ test('UI flows render, edit curriculum, take quiz, review, chat and retain XSS a
     w.location.hash = hash;
     await until(() => d.querySelector(selector));
   };
+  assert.equal(d.querySelectorAll('.game-chip').length, 3);
+  await navigate('#premium', '.plan-grid');
+  assert.match(d.querySelector('.premium-hero').textContent, /Mandarin Premium/);
   await navigate('#lessons/1', '#quiz-form');
   d.querySelector('[name=q0][value="1"]').checked = true;
   d.querySelector('[name=q1][value="0"]').checked = true;
@@ -96,6 +99,8 @@ test('UI flows render, edit curriculum, take quiz, review, chat and retain XSS a
     new w.Event('submit', { bubbles: true, cancelable: true }),
   );
   await until(() => d.querySelector('#quiz-result').textContent.includes('100%'));
+  assert.match(d.querySelector('#quiz-result').textContent, /\+35 XP/);
+  assert.equal(d.querySelector('#chrome-xp').textContent, '35');
   d.querySelector('[data-action=add-cards]').click();
   await until(() => ctx.db.prepare('SELECT count(*) n FROM cards').get().n === 4);
   await navigate('#review', '#review-card');
