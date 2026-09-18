@@ -2,7 +2,7 @@
 
 ## Konteks repo mandiri
 
-Hasil CI di bawah berasal dari repo sumber sebelum pemindahan. Source yang sama diuji ulang setelah dipindah ke struktur root: 12 tes Node dan 6 tes Python lulus. Workflow repo private akan menguji ulang source serta container setelah commit ini masuk.
+Source diuji ulang setelah dipindah ke struktur root: 12 tes Node dan 6 tes Python lulus. [GitHub Actions repo private](https://github.com/travisoptimumindonesia/aiagent/actions/runs/35359403709) juga menyelesaikan job `test` dan `containers` dengan hasil **success**: dependency dipasang ulang, tes dijalankan, image app/bridge dibangun, container dinyalakan, dan health check HTTP berhasil.
 
 ## Dijalankan dan lulus
 
