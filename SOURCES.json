@@ -2,6 +2,12 @@
   "reviewed": "2026-09-18",
   "repository": "travisoptimumindonesia/aiagent",
   "branch": "main",
+  "brand_asset": {
+    "file": "public/assets/mandarin-pare-logo.png",
+    "source": "https://www.mandarinpare.com/wp-content/uploads/2025/12/Logo-BIP-Tulisan.png",
+    "owner": "Beijing Institute Pare",
+    "usage": "Official parent-brand logo supplied on the organization's public website; confirm internal brand authorization before public launch."
+  },
   "forks": [
     {
       "repository": "travisoptimumindonesia/pywa",

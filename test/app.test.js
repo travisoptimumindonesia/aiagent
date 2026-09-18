@@ -139,6 +139,48 @@ test('authentication, cookies, CSRF and role boundaries', async (t) => {
   }).expect(200);
   await student.agent.get('/api/me').expect(401);
 });
+test('public registration creates only a student, enrolls the free course and starts a session', async (t) => {
+  const { ctx } = await fixture(t);
+  const visitor = request.agent(ctx.app);
+  const publicConfig = await visitor.get('/api/public').expect(200);
+  assert.equal(publicConfig.body.appName, 'LaoshiKu');
+  assert.equal(publicConfig.body.registrationOpen, true);
+  const registered = await visitor
+    .post('/api/register')
+    .set('Origin', origin)
+    .send({
+      name: 'Warga Belajar',
+      email: 'warga@example.com',
+      password: pwd,
+      consent: true,
+      role: 'admin',
+    })
+    .expect(201);
+  assert.equal(registered.body.user.role, 'student');
+  assert.ok(registered.body.csrf);
+  const dashboard = await visitor.get('/api/dashboard').expect(200);
+  assert.equal(dashboard.body.courses.find((course) => course.id === 1).enrolled, true);
+  await request(ctx.app)
+    .post('/api/register')
+    .set('Origin', origin)
+    .send({
+      name: 'Duplikat',
+      email: 'warga@example.com',
+      password: pwd,
+      consent: true,
+    })
+    .expect(409);
+  await request(ctx.app)
+    .post('/api/register')
+    .set('Origin', origin)
+    .send({
+      name: 'Tanpa Persetujuan',
+      email: 'tanpa@example.com',
+      password: pwd,
+      consent: false,
+    })
+    .expect(400);
+});
 test('enrollment and expiry gate lessons, reviews and tutor; quiz answers stay server-side', async (t) => {
   const { admin, account, mutate } = await fixture(t);
   const student = await account('noaccess', 'student', false);

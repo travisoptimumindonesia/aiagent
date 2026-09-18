@@ -1,16 +1,16 @@
-# Mandarin Studio — aplikasi kursus terpadu
+# LaoshiKu — Mandarin untuk Semua
 
-Repo private mandiri untuk portal siswa, ruang laoshi, latihan Hanzi, spaced repetition, tutor teks, tugas foto/suara, dan WhatsApp dalam satu deployment. Antarmuka bahasa Indonesia, responsif untuk HP.
+Platform belajar Mandarin dari **Beijing Institute Pare** untuk portal siswa, ruang laoshi, latihan Hanzi, spaced repetition, tutor teks, tugas foto/suara, dan WhatsApp dalam satu deployment. Antarmuka bahasa Indonesia, responsif untuk HP, dengan identitas merah–emas yang berdiri sendiri.
 
 **Mulai deploy:** bagian [Deployment](#deployment-ke-server). **Hasil pengujian dan batasan:** [VALIDATION.md](VALIDATION.md).
 
 ## Yang tersedia
 
-- Akun admin/laoshi/siswa; akun dibuat admin. Password bcrypt, sesi server-side, cookie HttpOnly, CSRF, pembatasan login, dan pencabutan sesi.
+- Akun admin/laoshi/siswa dan pendaftaran publik opsional. Password bcrypt, sesi server-side, cookie HttpOnly, CSRF, pembatasan login/daftar, dan pencabutan sesi. Akun baru otomatis masuk kelas gratis yang dikonfigurasi.
 - Kelas dan akses siswa dengan tanggal kedaluwarsa. Admin mengaktifkan akses setelah pendaftaran/pembayaran dikonfirmasi di luar aplikasi.
 - Editor materi, kosakata, kuis pilihan ganda, draf/terbit, penilaian kuis di server, dan progres siswa. Nilai terbaik ≥70% menandai materi selesai.
-- Learning path bergaya aplikasi mobile dengan XP, level, target harian, streak, hearts, grafik tujuh hari, dan badge. Reward XP memakai event unik sehingga mengulang request/refresh tidak menggandakan hadiah.
-- Model freemium: akun Free mendapatkan 5 hearts yang pulih setiap hari dan kuota tutor terbatas; Premium mendapatkan hearts tanpa batas serta kuota AI lebih tinggi. Admin dapat mengaktifkan Premium 30 hari setelah pembayaran terkonfirmasi.
+- Peta belajar mobile dengan poin, tingkat, target harian, rangkaian belajar, energi, grafik tujuh hari, dan lencana. Reward memakai event unik sehingga mengulang request/refresh tidak menggandakan hadiah.
+- Model freemium: akun Free mendapatkan 5 energi yang pulih setiap hari dan kuota tutor terbatas; Premium mendapatkan energi tanpa batas serta kuota AI lebih tinggi. Admin dapat mengaktifkan Premium 30 hari setelah pembayaran terkonfirmasi.
 - Hanzi Writer: animasi goresan, latihan sentuh dengan koreksi urutan, pinyin, data Hanzi lokal. Latihan dicatat sebagai latihan mandiri, bukan ujian terverifikasi.
 - TS-FSRS: kartu per siswa, due date tersimpan, pilihan Lagi/Sulit/Baik/Mudah, pemeriksaan versi untuk mencegah review ganda. Jadwal yang sama dipakai web dan WhatsApp.
 - Tutor percakapan dengan riwayat per akun dan batas penggunaan harian; memerlukan provider LLM yang kompatibel dengan `/chat/completions`.
@@ -20,7 +20,9 @@ Repo private mandiri untuk portal siswa, ruang laoshi, latihan Hanzi, spaced rep
 - WhatsApp resmi melalui Meta Cloud API dan PyWa: webhook bertanda tangan HMAC, deduplikasi ID, antrean persisten, percobaan kirim ulang, tautan akun sekali pakai, teks/foto/suara, dan review FSRS.
 - Docker Compose, HTTPS otomatis Caddy, volume persisten, health checks, backup/restore, serta tes otomatis.
 
-Materi bawaan hanya **3 contoh pemula**. Laoshi perlu meninjau dan menggantinya dengan kurikulum kursus. Ini bukan kurikulum HSK lengkap. Upgrade Premium saat ini diarahkan ke WhatsApp dan diaktifkan admin; belum ada payment gateway/langganan otomatis. Kelas live/video, sertifikat, aplikasi native, dan pendaftaran publik juga belum tersedia.
+Materi bawaan hanya **3 contoh pemula**. Laoshi perlu meninjau dan menggantinya dengan kurikulum kursus. Ini bukan kurikulum HSK lengkap. Upgrade Premium saat ini diarahkan ke WhatsApp dan diaktifkan admin; belum ada payment gateway/langganan otomatis. Kelas live/video, sertifikat, verifikasi email, reset sandi mandiri, dan aplikasi native belum tersedia.
+
+Nama kerja produk adalah **LaoshiKu** (`lǎoshī`/老师 berarti guru) dengan posisi **“LaoshiKu — Mandarin untuk Semua, by Beijing Institute Pare.”** Sebelum peluncuran komersial, lakukan pencarian merek dan domain secara formal. Pedoman orisinalitas dan penggunaan logo ada di [BRAND.md](BRAND.md).
 
 ## Penggabungan keenam fork
 
@@ -54,8 +56,8 @@ Untuk repo private, perintah clone di atas membutuhkan SSH key yang telah diberi
 
 Buka `https://DOMAIN`, login admin, lalu:
 
-1. Ruang laoshi → tambah akun siswa dan laoshi.
-2. Aktifkan akses siswa ke kelas; atur tanggal akhir bila diperlukan.
+1. Tentukan apakah pendaftaran mandiri dibuka lewat `PUBLIC_REGISTRATION`. Akun publik selalu berperan siswa.
+2. Ruang laoshi → tambah akun internal/laoshi dan atur akses kelas tambahan.
 3. Edit materi contoh atau buat kelas/materi sendiri.
 4. Uji satu akun siswa: kuis, latihan Hanzi, kartu review, dan upload tugas.
 5. Isi konfigurasi layanan di bawah dan jalankan ulang `bash scripts/deploy.sh`.
@@ -155,7 +157,7 @@ Tes provider memakai mock; tidak memakai akun/biaya API sungguhan. UI dites deng
 ## Struktur
 
 ```text
-mandarin-studio/
+laoshiku/
   src/             Node API, SQLite schema/seed, provider adapter, WhatsApp worker
   public/          Antarmuka responsif tanpa build frontend terpisah
   services/bridge/ PyWa, normalisasi audio, adapter SpeechSuper

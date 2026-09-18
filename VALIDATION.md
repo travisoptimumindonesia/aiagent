@@ -2,14 +2,14 @@
 
 ## Konteks repo mandiri
 
-Baseline repo private telah lulus workflow GitHub Actions. Setelah upgrade freemium/gamification, suite lokal terdiri dari 13 tes Node dan 6 tes Python; status workflow commit terbaru dicatat saat rilis.
+Baseline repo private telah lulus workflow GitHub Actions. Setelah upgrade identitas LaoshiKu, freemium, dan pendaftaran publik, suite lokal terdiri dari 15 tes Node dan 6 tes Python; status workflow commit terbaru dicatat saat rilis.
 
 ## Dijalankan dan lulus
 
 [GitHub Actions](https://github.com/travisoptimumindonesia/hanziguide/actions/runs/35331320599) menyelesaikan job `test` dan `containers` dengan hasil **success** untuk commit aplikasi `32ea8805c0f65a60195288167049bae68dd91d4e`.
 
 - `npm run check`: pemeriksaan sintaks JavaScript aplikasi, worker, dan frontend.
-- `npm test`: **13 tes** API/integrasi/UI DOM, termasuk XP idempotent, hearts, Premium, dan halaman paket.
+- `npm test`: **15 tes** API/integrasi/UI DOM, termasuk pendaftaran publik, onboarding LaoshiKu, XP idempotent, energi, Premium, dan halaman paket.
 - `python -m unittest discover -s test -p 'test_*.py' -v`: **6 tes** layanan Python.
 - `npm audit --omit=dev --audit-level=high`: **0 vulnerabilities** dilaporkan saat pemeriksaan; bukan jaminan bebas celah.
 - `bash -n` pada skrip setup/deploy/backup/restore. Smoke test setup juga memastikan password literal, permission `.env` 600, serta penolakan menimpa konfigurasi lama.
@@ -20,7 +20,7 @@ Baseline repo private telah lulus workflow GitHub Actions. Setelah upgrade freem
 
 ## Perilaku yang diuji
 
-1. Login, auth, CSRF, hak admin/laoshi/siswa, dan pencabutan sesi ketika akun dinonaktifkan.
+1. Login, pendaftaran publik khusus siswa, persetujuan data, email duplikat, auth, CSRF, hak admin/laoshi/siswa, dan pencabutan sesi ketika akun dinonaktifkan.
 2. Akses kelas belum aktif/kedaluwarsa; materi draf; jawaban kuis tidak dikirim kepada siswa sebelum submit; nilai dihitung server.
 3. Kartu per akun, deduplikasi saat menambahkan kosakata, penyimpanan jadwal FSRS, validasi rating, dan penolakan review versi lama/ganda.
 4. Upload perlu persetujuan, validasi signature file, isolasi file/tugas antar siswa, koreksi hanya oleh laoshi/admin, dan penghapusan file.

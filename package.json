@@ -1,7 +1,7 @@
 {
-  "name": "mandarin-studio",
+  "name": "laoshiku",
   "version": "1.0.0",
-  "description": "Portal kursus Mandarin, Hanzi, FSRS, tugas, dan tutor WhatsApp",
+  "description": "LaoshiKu: platform belajar Mandarin untuk semua dari Beijing Institute Pare",
   "main": "src/server.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env src/server.js",

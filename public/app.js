@@ -34,6 +34,7 @@ let user,
   recordedBlob,
   stream,
   routeVersion = 0;
+let publicConfig = { registrationOpen: true };
 const nav = [
   ['home', 'Beranda', 'home'],
   ['lessons', 'Materi kelas', 'book'],
@@ -77,19 +78,22 @@ const date = (s) =>
     month: 'short',
     year: 'numeric',
   });
-const brand = `<div class="brand"><span class="brand-mark">文</span><span>Mandarin Studio<small>LEARN A LITTLE, EVERY DAY</small></span></div>`;
+const brand = `<div class="brand"><img class="brand-logo" src="/assets/mandarin-pare-logo.png" alt="Logo Beijing Institute Pare"><span>LaoshiKu<small>MANDARIN UNTUK SEMUA</small></span></div>`;
 const head = (title, subtitle, tag = '一起学习 · Belajar bersama') =>
   `<div class="page-head"><div><div class="eyebrow">Ruang belajar Mandarin</div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div><span class="pill">${esc(tag)}</span></div>`;
 function login() {
   csrf = null;
+  const register = publicConfig.registrationOpen
+    ? `<button class="auth-tab" type="button" data-action="show-register">Daftar gratis</button>`
+    : '';
   $('#app').innerHTML =
-    `<main class="login"><section class="login-art">${brand}<div><h1>Langkah kecil.<br>Percakapan besar.</h1><div class="big-hanzi">你好。</div><p>Dari goresan pertama sampai percakapan yang percaya diri. Belajar dengan ritmemu, didampingi laoshi.</p></div><p class="small">每天进步一点点 · Sedikit lebih baik setiap hari.</p></section><section class="login-form"><div class="login-card"><div class="eyebrow">欢迎回来 · Selamat datang</div><h2>Masuk ke ruang belajarmu</h2><p>Lanjutkan perjalanan Mandarin bersama kelasmu.</p><form id="login-form"><div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" required placeholder="nama@email.com"></div><div class="field"><label for="password">Kata sandi</label><input id="password" name="password" type="password" autocomplete="current-password" required></div><p class="error" id="login-error" role="alert"></p><button class="btn full">Masuk ke kelas →</button></form><div class="divider"></div><p class="small">Belum punya akun atau lupa kata sandi? Hubungi admin kursus untuk mendapatkan akses.</p></div></section></main>`;
+    `<main class="login"><section class="login-art">${brand}<div class="login-promise"><span class="seal">师</span><div><p class="eyebrow">老师库 · LAOSHI BERARTI GURU</p><h1>Mandarin membuka lebih banyak jalan.</h1><p>Dari goresan pertama, nada bicara, sampai kesiapan HSK dan dunia kerja—belajar dengan jalur yang jelas dan pendampingan manusia.</p></div></div><div class="trust-line"><span>✓ Belajar lewat HP</span><span>✓ Latihan suara & Hanzi</span><span>✓ Didampingi laoshi</span></div></section><section class="login-form"><div class="login-card"><img class="institution-logo" src="/assets/mandarin-pare-logo.png" alt="Beijing Institute Pare"><div class="auth-tabs"><button class="auth-tab active" type="button" data-action="show-login">Masuk</button>${register}</div><div id="login-panel"><div class="eyebrow">欢迎回来 · Selamat datang</div><h2>Masuk ke ruang belajarmu</h2><p>Lanjutkan progres Mandarin yang sudah kamu bangun.</p><form id="login-form"><div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" required placeholder="nama@email.com"></div><div class="field"><label for="password">Kata sandi</label><input id="password" name="password" type="password" autocomplete="current-password" required></div><p class="error" id="login-error" role="alert"></p><button class="btn full">Masuk ke LaoshiKu →</button></form></div>${publicConfig.registrationOpen ? `<div id="register-panel" hidden><div class="eyebrow">从这里开始 · Mulai dari sini</div><h2>Buat akun gratis</h2><p>Terbuka untuk siapa pun yang ingin mulai belajar Mandarin.</p><form id="register-form"><div class="field"><label for="register-name">Nama lengkap</label><input id="register-name" name="name" autocomplete="name" minlength="2" maxlength="100" required></div><div class="field"><label for="register-email">Email</label><input id="register-email" name="email" type="email" autocomplete="email" required placeholder="nama@email.com"></div><div class="field"><label for="register-password">Kata sandi</label><input id="register-password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="72" required><small>Minimal 12 karakter.</small></div><label class="check consent"><input name="consent" type="checkbox" required><span>Saya setuju data akun dan progres belajar diproses untuk menyediakan layanan LaoshiKu.</span></label><p class="error" id="register-error" role="alert"></p><button class="btn full">Mulai belajar gratis →</button></form></div>` : ''}<div class="auth-foot"><strong>LaoshiKu</strong> by Beijing Institute Pare<br><span>Platform belajar mandiri dan pendamping kelas.</span></div></div></section></main>`;
 }
 function shell() {
   const links = [...nav];
   if (user.role !== 'student') links.push(['staff', 'Ruang laoshi', 'users']);
   $('#app').innerHTML =
-    `<div class="shell"><aside class="sidebar">${brand}<nav class="nav" aria-label="Menu utama">${links.map(([id, label, i]) => `<a href="#${id}" data-nav="${id}">${icon(i)}${label}</a>`).join('')}</nav><div class="sidebar-bottom"><div class="user"><div class="avatar">${esc(user.name.slice(0, 1).toUpperCase())}</div><div><strong>${esc(user.name)}</strong><span class="small muted">${user.role === 'student' ? 'Siswa' : user.role === 'teacher' ? 'Laoshi' : 'Administrator'}</span></div></div><button class="link" data-action="logout">Keluar dari akun ↗</button></div></aside><main><header class="topbar"><span>我的课堂 <span class="muted">/ Ruang kelasku</span></span><div class="game-strip"><a href="#premium" class="game-chip fire" title="Streak"><span>🔥</span><strong id="chrome-streak">${game.streak || 0}</strong></a><a href="#home" class="game-chip xp" title="XP"><span>⚡</span><strong id="chrome-xp">${game.xp || 0}</strong></a><a href="#premium" class="game-chip hearts" title="Hearts"><span>♥</span><strong id="chrome-hearts">${game.hearts === null ? '∞' : (game.hearts ?? 5)}</strong></a><span class="date">${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' })}</span></div></header><div id="content" class="content"></div></main></div>`;
+    `<div class="shell"><aside class="sidebar">${brand}<nav class="nav" aria-label="Menu utama">${links.map(([id, label, i]) => `<a href="#${id}" data-nav="${id}">${icon(i)}${label}</a>`).join('')}</nav><div class="sidebar-bottom"><div class="user"><div class="avatar">${esc(user.name.slice(0, 1).toUpperCase())}</div><div><strong>${esc(user.name)}</strong><span class="small muted">${user.role === 'student' ? 'Siswa' : user.role === 'teacher' ? 'Laoshi' : 'Administrator'}</span></div></div><button class="link" data-action="logout">Keluar dari akun ↗</button></div></aside><main><header class="topbar"><span>我的课堂 <span class="muted">/ Ruang kelasku</span></span><div class="game-strip"><a href="#premium" class="game-chip fire" title="Rangkaian belajar"><span>火</span><strong id="chrome-streak">${game.streak || 0}</strong></a><a href="#home" class="game-chip xp" title="Poin belajar"><span>分</span><strong id="chrome-xp">${game.xp || 0}</strong></a><a href="#premium" class="game-chip hearts" title="Energi belajar"><span>气</span><strong id="chrome-hearts">${game.hearts === null ? '∞' : (game.hearts ?? 5)}</strong></a><span class="date">${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' })}</span></div></header><div id="content" class="content"></div></main></div>`;
 }
 function syncGame(next) {
   if (!next) return;
@@ -161,7 +165,7 @@ async function home() {
         : `${Math.max(0, game.dailyGoalXp - game.todayXp)} XP lagi untuk menuntaskan target hari ini.`,
       game.plan === 'premium' ? 'PREMIUM · 全力学习' : 'FREE · 每天进步',
     ) +
-    `<section class="hero game-hero"><div class="hero-copy"><div class="eyebrow">Level ${game.level} · ${game.xp} total XP</div><h2>${next ? 'Pelajaran berikutnya sudah menunggumu.' : 'Perjalanan Mandarin dimulai dari sini.'}</h2><p>${next ? `Jaga streak ${game.streak} hari dan kumpulkan XP dari kuis, Hanzi, speaking, serta review.` : 'Admin kursus akan mengaktifkan kelas untuk akunmu.'}</p><a class="btn lime" href="#${next ? 'lessons/' + next.id : 'lessons'}">${next ? 'Mulai sesi hari ini' : 'Lihat kelas'} <span>→</span></a></div><div class="hero-hanzi" aria-hidden="true">学<small>XUÉ · BELAJAR</small></div></section><section class="mission-card"><div class="mission-copy"><span class="mission-icon">⚡</span><div><strong>Target harian</strong><p>${game.todayXp} / ${game.dailyGoalXp} XP ${game.goalComplete ? '· 完成!' : ''}</p></div></div><div class="progress-track"><span style="width:${goal}%"></span></div><strong class="mission-percent">${goal}%</strong></section><div class="stats game-stats"><div class="stat"><span class="label">Streak</span><div class="number">🔥 ${game.streak}</div><span class="kicker">Terbaik ${game.longestStreak} hari</span></div><div class="stat"><span class="label">Hearts</span><div class="number hearts-value">${game.hearts === null ? '∞' : '♥'.repeat(game.hearts)}</div><a class="link small" href="#premium">${game.plan === 'premium' ? 'Premium aktif' : 'Isi penuh tiap hari'}</a></div><div class="stat"><span class="label">Pencapaian</span><div class="number">${unlockedBadges}<span class="small muted"> / ${game.achievements.length}</span></div><span class="kicker">Badge terbuka</span></div></div><div class="dashboard-grid"><section class="panel path-panel"><div class="panel-head"><div><span class="eyebrow">Learning path</span><h2>Jalur belajarmu</h2></div><a class="link" href="#lessons">Lihat semua →</a></div>${
+    `<section class="hero game-hero"><div class="hero-copy"><div class="eyebrow">TINGKAT ${game.level} · ${game.xp} POIN BELAJAR</div><h2>${next ? 'Satu sesi hari ini, satu langkah lebih dekat.' : 'Perjalanan Mandarin dimulai dari sini.'}</h2><p>${next ? `Rangkaianmu ${game.streak} hari. Lanjutkan lewat kuis, Hanzi, percakapan, atau review.` : 'Kelas pertamamu akan tampil setelah akses diaktifkan.'}</p><a class="btn lime" href="#${next ? 'lessons/' + next.id : 'lessons'}">${next ? 'Buka sesi berikutnya' : 'Lihat kelas'} <span>→</span></a></div><div class="hero-hanzi" aria-hidden="true">学<small>XUÉ · BELAJAR</small></div></section><section class="mission-card"><div class="mission-copy"><span class="mission-icon">今日</span><div><strong>Target hari ini</strong><p>${game.todayXp} / ${game.dailyGoalXp} poin ${game.goalComplete ? '· 完成!' : ''}</p></div></div><div class="progress-track"><span style="width:${goal}%"></span></div><strong class="mission-percent">${goal}%</strong></section><div class="stats game-stats"><div class="stat"><span class="label">Rangkaian</span><div class="number">${game.streak} hari</div><span class="kicker">Rekor ${game.longestStreak} hari</span></div><div class="stat"><span class="label">Energi belajar</span><div class="number hearts-value">${game.hearts === null ? 'Tanpa batas' : `${game.hearts} / ${game.maxHearts}`}</div><a class="link small" href="#premium">${game.plan === 'premium' ? 'Premium aktif' : 'Pulih setiap hari'}</a></div><div class="stat"><span class="label">Pencapaian</span><div class="number">${unlockedBadges}<span class="small muted"> / ${game.achievements.length}</span></div><span class="kicker">Lencana terbuka</span></div></div><div class="dashboard-grid"><section class="panel path-panel"><div class="panel-head"><div><span class="eyebrow">PETA BELAJAR</span><h2>Rute belajarmu</h2></div><a class="link" href="#lessons">Lihat semua →</a></div>${
       d.lessons.length
         ? d.lessons
             .slice(0, 5)
@@ -233,10 +237,10 @@ async function loadWriter(c) {
       width: 278,
       height: 278,
       padding: 20,
-      strokeColor: '#17483e',
-      radicalColor: '#b8643f',
-      outlineColor: '#e6e0cf',
-      drawingColor: '#17483e',
+      strokeColor: '#9f1f2f',
+      radicalColor: '#d39a37',
+      outlineColor: '#eadfd8',
+      drawingColor: '#9f1f2f',
       showOutline: true,
       charDataLoader: (char, onLoad, onError) =>
         fetch(`/data/hanzi/${encodeURIComponent(char)}`)
@@ -323,7 +327,7 @@ async function premium() {
         : 'Mulai gratis. Upgrade hanya saat ritme belajarmu membutuhkan lebih banyak.',
       premiumActive ? '会员 · PREMIUM' : 'FREEMIUM · 无压力',
     ) +
-    `<section class="premium-hero"><div><span class="premium-crown">冠</span><div class="eyebrow">Mandarin Premium</div><h2>Latihan lebih sering.<br>Progress lebih terukur.</h2><p>Hearts tanpa batas, tutor AI lebih banyak, dan prioritas koreksi speaking.</p></div><div class="premium-price"><span>Mulai dari</span><strong>Rp${money}</strong><small>/ bulan</small></div></section><div class="plan-grid"><section class="plan-card ${!premiumActive ? 'current' : ''}"><div class="plan-title"><div><span class="eyebrow">Mulai belajar</span><h2>Gratis</h2></div>${!premiumActive ? '<span class="pill">Paketmu</span>' : ''}</div><div class="plan-price"><strong>Rp0</strong><span>selamanya</span></div><ul class="feature-list">${p.free.map((x) => `<li><span>✓</span>${esc(x)}</li>`).join('')}</ul><a class="btn secondary full" href="#home">Lanjutkan belajar</a></section><section class="plan-card featured ${premiumActive ? 'current' : ''}"><div class="best-value">PALING LENGKAP</div><div class="plan-title"><div><span class="eyebrow">Belajar serius</span><h2>Premium</h2></div>${premiumActive ? '<span class="pill">Aktif</span>' : ''}</div><div class="plan-price"><strong>Rp${money}</strong><span>per bulan</span></div><ul class="feature-list">${p.premium.map((x) => `<li><span>✓</span>${esc(x)}</li>`).join('')}</ul>${premiumActive ? '<a class="btn lime full" href="#home">Premium sudah aktif ✓</a>' : p.checkoutUrl ? `<a class="btn lime full" target="_blank" rel="noopener" href="${esc(p.checkoutUrl)}">Upgrade via WhatsApp →</a>` : '<button class="btn lime full" disabled>Hubungi admin untuk upgrade</button>'}<p class="plan-note">Aktivasi dilakukan admin setelah pembayaran terkonfirmasi. Tidak ada perpanjangan otomatis tersembunyi.</p></section></div><section class="panel mt"><div class="panel-head"><h2>Kenapa sistemnya seperti ini?</h2><span class="pill">Transparan</span></div><div class="benefit-grid"><div><strong>🔥 Konsisten</strong><p>Streak dan target harian menjaga ritme tanpa memaksa belajar lama.</p></div><div><strong>⚡ Terukur</strong><p>XP diberikan dari aktivitas nyata dan tidak dapat digandakan dengan refresh.</p></div><div><strong>♥ Tetap manusiawi</strong><p>Paket gratis tetap berguna. Premium menghilangkan batas, bukan menyembunyikan materi.</p></div></div></section>`
+    `<section class="premium-hero"><div><span class="premium-crown">冠</span><div class="eyebrow">LaoshiKu Premium</div><h2>Lebih leluasa berlatih.<br>Lebih dekat ke tujuanmu.</h2><p>Energi tanpa batas, tutor AI lebih banyak, dan prioritas koreksi pelafalan.</p></div><div class="premium-price"><span>Mulai dari</span><strong>Rp${money}</strong><small>/ bulan</small></div></section><div class="plan-grid"><section class="plan-card ${!premiumActive ? 'current' : ''}"><div class="plan-title"><div><span class="eyebrow">Mulai belajar</span><h2>Gratis</h2></div>${!premiumActive ? '<span class="pill">Paketmu</span>' : ''}</div><div class="plan-price"><strong>Rp0</strong><span>selamanya</span></div><ul class="feature-list">${p.free.map((x) => `<li><span>✓</span>${esc(x)}</li>`).join('')}</ul><a class="btn secondary full" href="#home">Lanjutkan belajar</a></section><section class="plan-card featured ${premiumActive ? 'current' : ''}"><div class="best-value">AKSES LEBIH LUAS</div><div class="plan-title"><div><span class="eyebrow">Belajar intensif</span><h2>Premium</h2></div>${premiumActive ? '<span class="pill">Aktif</span>' : ''}</div><div class="plan-price"><strong>Rp${money}</strong><span>per bulan</span></div><ul class="feature-list">${p.premium.map((x) => `<li><span>✓</span>${esc(x)}</li>`).join('')}</ul>${premiumActive ? '<a class="btn lime full" href="#home">Premium sudah aktif ✓</a>' : p.checkoutUrl ? `<a class="btn lime full" target="_blank" rel="noopener" href="${esc(p.checkoutUrl)}">Upgrade via WhatsApp →</a>` : '<button class="btn lime full" disabled>Hubungi admin untuk upgrade</button>'}<p class="plan-note">Aktivasi dilakukan admin setelah pembayaran terkonfirmasi. Tidak ada perpanjangan otomatis tersembunyi.</p></section></div><section class="panel mt"><div class="panel-head"><h2>Dibuat untuk kebiasaan yang sehat</h2><span class="pill">Transparan</span></div><div class="benefit-grid"><div><strong>Ritme konsisten</strong><p>Rangkaian dan target harian menjaga kebiasaan tanpa harus belajar lama.</p></div><div><strong>Progres terukur</strong><p>Poin diberikan dari aktivitas nyata dan tidak dapat digandakan dengan refresh.</p></div><div><strong>Tetap manusiawi</strong><p>Paket gratis tetap berguna. Premium mengurangi batas, bukan menyembunyikan dasar belajar.</p></div></div></section>`
   );
 }
 function account() {
@@ -430,6 +434,21 @@ document.addEventListener('submit', async (e) => {
       game = me.gamification;
       shell();
       await route();
+    } else if (f.id === 'register-form') {
+      const d = await api('/register', {
+        name: b.name,
+        email: b.email,
+        password: b.password,
+        consent: b.consent === 'on',
+      });
+      user = d.user;
+      csrf = d.csrf;
+      const me = await api('/me');
+      capabilities = me.capabilities;
+      game = me.gamification;
+      shell();
+      await route();
+      toast('Akun LaoshiKu berhasil dibuat. Selamat belajar!');
     } else if (f.id === 'quiz-form') {
       const answers = [...f.querySelectorAll('fieldset')].map((_, i) => Number(b['q' + i]));
       const r = await api(`/lessons/${f.dataset.id}/quiz`, { answers });
@@ -521,7 +540,9 @@ document.addEventListener('submit', async (e) => {
     }
   } catch (err) {
     toast(err.message);
-    if (f.id === 'login-form') $('#login-error').textContent = err.message;
+    if (f.id === 'login-form' && $('#login-error')) $('#login-error').textContent = err.message;
+    if (f.id === 'register-form' && $('#register-error'))
+      $('#register-error').textContent = err.message;
     if (f.id === 'upload-form' && $('#upload-result'))
       $('#upload-result').textContent = err.message;
   } finally {
@@ -535,6 +556,13 @@ document.addEventListener('click', async (e) => {
   if (el.disabled) return;
   el.disabled = true;
   try {
+    if (a === 'show-register' || a === 'show-login') {
+      const registerMode = a === 'show-register';
+      if ($('#register-panel')) $('#register-panel').hidden = !registerMode;
+      if ($('#login-panel')) $('#login-panel').hidden = registerMode;
+      $$('.auth-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.action === a));
+      (registerMode ? $('#register-name') : $('#email'))?.focus();
+    }
     if (a === 'logout') {
       await api('/logout', {});
       user = null;
@@ -718,5 +746,8 @@ try {
   shell();
   await route();
 } catch {
+  try {
+    publicConfig = await api('/public');
+  } catch {}
   login();
 }

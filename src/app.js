@@ -353,6 +353,84 @@ export function createApp(env = process.env, overrides = {}) {
     path: '/',
     maxAge: 7 * 86400000,
   };
+  function startSession(u, req, res, status = 200) {
+    const sid = token(),
+      csrf = token();
+    if (req.cookies.sid)
+      db.prepare('DELETE FROM sessions WHERE token=?').run(hash(req.cookies.sid));
+    db.prepare('DELETE FROM sessions WHERE expires<?').run(Date.now());
+    db.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(
+      hash(sid),
+      u.id,
+      csrf,
+      Date.now() + 7 * 86400000,
+    );
+    return res
+      .status(status)
+      .cookie('sid', sid, cookie)
+      .json({ user: safeUser(u), csrf });
+  }
+  app.get('/api/public', (_, res) =>
+    res.json({
+      appName: 'LaoshiKu',
+      parentBrand: 'Beijing Institute Pare',
+      registrationOpen: env.PUBLIC_REGISTRATION !== '0',
+    }),
+  );
+  app.post(
+    '/api/register',
+    rateLimit({
+      windowMs: 3600000,
+      limit: 5,
+      standardHeaders: 'draft-8',
+      legacyHeaders: false,
+    }),
+    async (req, res) => {
+      if (env.PUBLIC_REGISTRATION === '0') fail(403, 'Pendaftaran mandiri sedang ditutup.');
+      const b = z
+        .object({
+          name: z.string().trim().min(2).max(100),
+          email,
+          password,
+          consent: z.literal(true),
+        })
+        .parse(req.body);
+      if (db.prepare('SELECT id FROM users WHERE email=?').get(b.email))
+        fail(409, 'Email sudah terdaftar. Silakan masuk.');
+      const passwordHash = await bcrypt.hash(b.password, 12);
+      let userId;
+      try {
+        userId = tx(db, () => {
+          const result = db
+            .prepare("INSERT INTO users(name,email,password,role) VALUES(?,?,?,'student')")
+            .run(b.name, b.email, passwordHash);
+          const courseId = Number(env.FREE_COURSE_ID || 1);
+          const course = Number.isInteger(courseId)
+            ? db.prepare('SELECT id FROM courses WHERE id=?').get(courseId)
+            : null;
+          if (course)
+            db.prepare('INSERT OR IGNORE INTO enrollments VALUES(?,?,NULL)').run(
+              result.lastInsertRowid,
+              course.id,
+            );
+          db.prepare('INSERT OR IGNORE INTO learner_stats(user_id) VALUES(?)').run(
+            result.lastInsertRowid,
+          );
+          db.prepare('INSERT INTO audit(actor,action,subject) VALUES(?,?,?)').run(
+            result.lastInsertRowid,
+            'self_register',
+            result.lastInsertRowid,
+          );
+          return Number(result.lastInsertRowid);
+        });
+      } catch (error) {
+        if (String(error.code).startsWith('SQLITE_CONSTRAINT'))
+          fail(409, 'Email sudah terdaftar. Silakan masuk.');
+        throw error;
+      }
+      return startSession(db.prepare('SELECT * FROM users WHERE id=?').get(userId), req, res, 201);
+    },
+  );
   app.post(
     '/api/login',
     rateLimit({
@@ -370,18 +448,7 @@ export function createApp(env = process.env, overrides = {}) {
         u?.password || '$2b$12$C6UzMDM.H6dfI/f/IKcEe.ixPoYWFB8BYOjklLf.ZJAI9wNY.OALy',
       );
       if (!u || !match) fail(401, 'Email atau kata sandi salah.');
-      const sid = token(),
-        csrf = token();
-      if (req.cookies.sid)
-        db.prepare('DELETE FROM sessions WHERE token=?').run(hash(req.cookies.sid));
-      db.prepare('DELETE FROM sessions WHERE expires<?').run(Date.now());
-      db.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(
-        hash(sid),
-        u.id,
-        csrf,
-        Date.now() + 7 * 86400000,
-      );
-      res.cookie('sid', sid, cookie).json({ user: safeUser(u), csrf });
+      return startSession(u, req, res);
     },
   );
   app.get('/api/me', auth, (req, res) =>
@@ -443,7 +510,7 @@ export function createApp(env = process.env, overrides = {}) {
     const stats = gamification(req.user.id);
     const price = Math.max(0, Number(env.PREMIUM_PRICE_IDR || 149000));
     const phone = String(env.SALES_WHATSAPP || env.WA_PUBLIC_NUMBER || '').replace(/\D/g, '');
-    const message = `Halo admin, saya ${req.user.name} (${req.user.email}) ingin upgrade Mandarin Premium.`;
+    const message = `Halo admin, saya ${req.user.name} (${req.user.email}) ingin upgrade LaoshiKu Premium.`;
     res.json({
       current: stats.plan,
       price,
@@ -451,12 +518,12 @@ export function createApp(env = process.env, overrides = {}) {
       checkoutUrl: phone ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : null,
       free: [
         'Semua materi gratis yang diaktifkan',
-        '5 hearts per hari',
+        '5 energi belajar per hari',
         `${Number(env.AI_DAILY_LIMIT || 10)} sesi tutor AI/hari`,
         'XP, streak, dan review FSRS',
       ],
       premium: [
-        'Hearts tanpa batas',
+        'Energi belajar tanpa batas',
         `${Number(env.AI_PREMIUM_DAILY_LIMIT || 100)} sesi tutor AI/hari`,
         'Hingga 100 tugas foto/suara per hari',
         'XP, streak, dan laporan kemajuan',
@@ -473,7 +540,7 @@ export function createApp(env = process.env, overrides = {}) {
       quiz = JSON.parse(l.quiz);
     const beforeStats = ensureStats(req.user.id);
     if (req.user.role === 'student' && !premiumActive(beforeStats) && beforeStats.hearts <= 0)
-      fail(429, 'Hearts habis. Coba lagi besok atau upgrade ke Premium untuk hearts tanpa batas.');
+      fail(429, 'Energi belajar habis. Coba lagi besok atau upgrade ke Premium tanpa batas.');
     const b = z
       .object({
         answers: z.array(z.number().int().min(0).max(5)).length(quiz.length),

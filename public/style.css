@@ -5,16 +5,16 @@
     system-ui,
     -apple-system,
     sans-serif;
-  color: #22362f;
-  background: #f7f7f2;
+  color: #302326;
+  background: #fbf8f4;
   font-synthesis: none;
-  --green: #17483e;
-  --lime: #d9ef94;
-  --orange: #bb542e;
-  --muted: #76837a;
-  --line: #e3e7dc;
+  --green: #9f1f2f;
+  --lime: #f3d28f;
+  --orange: #c34a2f;
+  --muted: #7f7173;
+  --line: #eadfd8;
   --white: #fff;
-  --radius: 18px;
+  --radius: 16px;
 }
 * {
   box-sizing: border-box;
@@ -1519,5 +1519,371 @@ summary {
   .plan-grid,
   .benefit-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* LaoshiKu brand system: original red, gold, ink and paper visual language. */
+.brand-logo {
+  width: 48px;
+  height: 38px;
+  object-fit: contain;
+  object-position: left center;
+}
+.brand > span {
+  color: #302326;
+}
+.sidebar {
+  background: #fffdf9;
+  border-right-color: #eadfd8;
+}
+.nav a {
+  color: #77676a;
+  border-left: 3px solid transparent;
+  border-radius: 4px 12px 12px 4px;
+}
+.nav a.active {
+  background: #fbecef;
+  color: #8e1728;
+  border-left-color: #b12236;
+}
+.nav a:hover {
+  background: #fcf3f1;
+}
+.topbar {
+  background: #fffdf9e8;
+}
+.btn {
+  border-radius: 8px;
+  background: #9f1f2f;
+  box-shadow: 0 3px 0 #751522;
+}
+.btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #751522;
+}
+.btn.lime {
+  background: #f2c86f;
+  color: #5a3713;
+  box-shadow: 0 3px 0 #c9973c;
+}
+.btn.secondary {
+  background: #f7ebe8;
+  color: #8b1c2c;
+  box-shadow: none;
+}
+.btn.outline {
+  background: #fffdf9;
+  border-color: #d6b9b5;
+  box-shadow: none;
+}
+.hero,
+.game-hero {
+  background: linear-gradient(110deg, #7b1323 0%, #a71930 55%, #c53b3d 100%);
+  box-shadow: 0 20px 50px #85192a24;
+  border-radius: 8px 28px 8px 28px;
+}
+.hero:after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 1px solid #f3d28f55;
+  border-radius: 5px 22px 5px 22px;
+  pointer-events: none;
+}
+.hero-copy {
+  z-index: 2;
+}
+.hero p {
+  color: #f4dfe1;
+}
+.hero .eyebrow,
+.hero-hanzi {
+  color: #f4d083;
+}
+.mission-card {
+  border-radius: 4px 16px 4px 16px;
+  box-shadow: 0 8px 25px #68121f12;
+}
+.mission-icon {
+  width: 46px;
+  background: #f8e7c2;
+  color: #8b1c2c;
+  border-radius: 50%;
+  font-family: serif;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.progress-track {
+  background: #f0e7e2;
+}
+.progress-track span {
+  background: linear-gradient(90deg, #a71930, #d05a43);
+}
+.stat,
+.panel {
+  background: #fffdf9;
+  border-color: #eadfd8;
+}
+.game-stats .stat {
+  border-bottom-color: #eadfd8;
+}
+.hearts-value {
+  color: #9f1f2f;
+  font-size: 1.25rem !important;
+  letter-spacing: -0.2px !important;
+}
+.game-chip {
+  border-radius: 5px 12px 5px 12px;
+  background: #fffdf9;
+}
+.game-chip.fire,
+.game-chip.xp,
+.game-chip.hearts {
+  color: #9f1f2f;
+}
+.game-chip span {
+  color: #c48b34;
+  font-family: serif;
+  font-weight: 800;
+}
+.path-node {
+  border-radius: 4px 14px 4px 14px;
+  border: 1px solid transparent;
+  margin: 4px 0;
+}
+.path-node:hover {
+  background: #fcf3f1;
+  border-color: #eed8d4;
+}
+.path-node:not(:last-child):after {
+  left: 31px;
+  width: 2px;
+  background: #dfc9c4;
+}
+.path-dot {
+  border-radius: 50%;
+  background: #eee4df;
+  color: #816f70;
+  border: 2px solid #d8c7c2;
+  box-shadow: none;
+}
+.path-node.done .path-dot {
+  background: #9f1f2f;
+  border-color: #9f1f2f;
+}
+.path-node.current {
+  background: #fff5e1;
+  border-color: #e8c77f;
+}
+.path-node.current .path-dot {
+  background: #f2c86f;
+  border-color: #b98228;
+  color: #5e3811;
+  transform: none;
+}
+.path-arrow {
+  color: #a87429;
+}
+.week-chart span {
+  background: linear-gradient(#d5a74d, #9f1f2f);
+}
+.achievement.unlocked {
+  background: #fff3d7;
+  border-color: #e6c36d;
+}
+.feature-list li span {
+  color: #a71930;
+}
+.xp-earned {
+  color: #801526;
+  background: #f9e6e9;
+}
+:focus-visible {
+  outline-color: #c49943;
+}
+#toast {
+  background: #681522;
+}
+.login {
+  grid-template-columns: minmax(0, 1.12fr) minmax(420px, 0.88fr);
+  background: #fbf8f4;
+}
+.login-art {
+  padding: 52px 9%;
+  background:
+    radial-gradient(circle at 85% 15%, #efc87638 0 18%, transparent 19%),
+    linear-gradient(145deg, #6e1020 0%, #a71930 62%, #c83e3f 100%);
+  position: relative;
+}
+.login-art:after {
+  content: '学';
+  position: absolute;
+  right: -15px;
+  bottom: -105px;
+  color: #f3d28f12;
+  font: 430px/1 serif;
+  pointer-events: none;
+}
+.login-art .brand {
+  position: relative;
+  z-index: 1;
+}
+.login-art .brand-logo {
+  filter: drop-shadow(0 2px 7px #0002);
+}
+.login-art .brand > span {
+  color: white;
+}
+.login-promise {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 25px;
+  position: relative;
+  z-index: 1;
+}
+.login-promise .seal {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 2px solid #f1ca79;
+  color: #f1ca79;
+  font: 42px/1 serif;
+  transform: rotate(-3deg);
+}
+.login-art h1 {
+  font-size: clamp(2.5rem, 5vw, 4.7rem);
+  max-width: 720px;
+  margin: 8px 0 24px;
+  letter-spacing: -2.7px;
+}
+.login-art p {
+  color: #f3dfe2;
+  max-width: 590px;
+  font-size: 1rem;
+}
+.login-art .eyebrow {
+  color: #f1ca79;
+  font-size: 0.7rem;
+}
+.trust-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  position: relative;
+  z-index: 1;
+  color: #f4e8e9;
+  font-size: 0.78rem;
+}
+.login-form {
+  padding: 38px clamp(28px, 6vw, 80px);
+  background: #fbf8f4;
+}
+.login-card {
+  max-width: 440px;
+}
+.institution-logo {
+  width: 190px;
+  height: 48px;
+  object-fit: contain;
+  object-position: left center;
+  margin-bottom: 25px;
+}
+.auth-tabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 30px;
+  padding: 4px;
+  background: #efe6e1;
+  border-radius: 10px;
+}
+.auth-tab {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: #79696b;
+  padding: 10px 14px;
+  border-radius: 7px;
+  font-weight: 700;
+}
+.auth-tab.active {
+  background: #fffdf9;
+  color: #8e1728;
+  box-shadow: 0 2px 8px #4e17200c;
+}
+.login-card form {
+  margin-top: 24px;
+}
+.login-card .field {
+  margin-bottom: 15px;
+}
+.login-card .consent {
+  margin-top: 8px;
+  font-size: 0.76rem;
+  color: #6f6062;
+}
+.auth-foot {
+  border-top: 1px solid #eadfd8;
+  margin-top: 28px;
+  padding-top: 18px;
+  color: #7f7173;
+  font-size: 0.72rem;
+  line-height: 1.65;
+}
+.auth-foot strong {
+  color: #9f1f2f;
+}
+
+@media (max-width: 860px) {
+  .login {
+    display: block;
+  }
+  .login-art {
+    min-height: 330px;
+    padding: 28px 30px 34px;
+    gap: 38px;
+  }
+  .login-promise {
+    grid-template-columns: 1fr;
+    gap: 13px;
+  }
+  .login-promise .seal {
+    width: 48px;
+    height: 48px;
+    font-size: 29px;
+  }
+  .login-art h1 {
+    font-size: clamp(2rem, 9vw, 3.3rem);
+    margin: 5px 0 14px;
+  }
+  .login-art p {
+    display: block;
+    font-size: 0.86rem;
+  }
+  .trust-line {
+    display: none;
+  }
+  .login-form {
+    padding: 32px 27px 45px;
+  }
+}
+
+@media (max-width: 680px) {
+  .sidebar .brand-logo {
+    height: 32px;
+    width: 42px;
+  }
+  .hero {
+    border-radius: 7px 22px 7px 22px;
+  }
+  .game-stats {
+    grid-template-columns: 1fr;
+  }
+  .login-art {
+    min-height: 300px;
+  }
+  .institution-logo {
+    width: 160px;
   }
 }

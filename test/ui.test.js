@@ -91,7 +91,7 @@ test('UI flows render, edit curriculum, take quiz, review, chat and retain XSS a
   };
   assert.equal(d.querySelectorAll('.game-chip').length, 3);
   await navigate('#premium', '.plan-grid');
-  assert.match(d.querySelector('.premium-hero').textContent, /Mandarin Premium/);
+  assert.match(d.querySelector('.premium-hero').textContent, /LaoshiKu Premium/);
   await navigate('#lessons/1', '#quiz-form');
   d.querySelector('[name=q0][value="1"]').checked = true;
   d.querySelector('[name=q1][value="0"]').checked = true;
@@ -132,5 +132,68 @@ test('UI flows render, edit curriculum, take quiz, review, chat and retain XSS a
   assert.equal(d.querySelector('#recording-controls').hidden, false);
   await navigate('#account', '#password-form');
   assert.ok(d.querySelector('[autocomplete="new-password"]'));
+  assert.deepEqual(errors, []);
+});
+
+test('public mobile-first onboarding shows LaoshiKu brand and registers a learner', async (t) => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'laoshiku-register-ui-'));
+  const ctx = createApp({
+    PUBLIC_URL: origin,
+    DB_PATH: path.join(dir, 'db'),
+    UPLOAD_DIR: path.join(dir, 'files'),
+    ADMIN_EMAIL: 'admin@example.com',
+    ADMIN_PASSWORD: 'strong-test-password',
+  });
+  const agent = request.agent(ctx.app);
+  const errors = [];
+  const vc = new VirtualConsole();
+  vc.on('jsdomError', (e) => errors.push(e.message));
+  const dom = new JSDOM(readFileSync(new URL('../public/index.html', import.meta.url), 'utf8'), {
+    url: origin,
+    runScripts: 'outside-only',
+    pretendToBeVisual: true,
+    virtualConsole: vc,
+  });
+  const w = dom.window,
+    d = w.document;
+  t.after(() => {
+    w.close();
+    ctx.db.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+  w.fetch = async (url, opts = {}) => {
+    const method = (opts.method || 'GET').toLowerCase();
+    let response = agent[method](url).set('Origin', origin);
+    for (const [key, value] of Object.entries(opts.headers || {}))
+      response = response.set(key, value);
+    if (opts.body) response = response.send(opts.body);
+    const result = await response;
+    return {
+      ok: result.status >= 200 && result.status < 300,
+      status: result.status,
+      json: async () => result.body,
+    };
+  };
+  await w.eval(
+    `(async()=>{${readFileSync(new URL('../public/app.js', import.meta.url), 'utf8')}\n})()`,
+  );
+  await until(() => d.querySelector('[data-action="show-register"]'));
+  assert.match(d.querySelector('.login').textContent, /Mandarin membuka lebih banyak jalan/);
+  assert.equal(
+    d.querySelector('.institution-logo').getAttribute('src'),
+    '/assets/mandarin-pare-logo.png',
+  );
+  d.querySelector('[data-action="show-register"]').click();
+  assert.equal(d.querySelector('#register-panel').hidden, false);
+  d.querySelector('#register-name').value = 'Pelajar Indonesia';
+  d.querySelector('#register-email').value = 'publik@example.com';
+  d.querySelector('#register-password').value = 'password-publik-kuat';
+  d.querySelector('#register-panel [name="consent"]').checked = true;
+  d.querySelector('#register-form').dispatchEvent(
+    new w.Event('submit', { bubbles: true, cancelable: true }),
+  );
+  await until(() => d.querySelector('.shell'));
+  assert.match(d.querySelector('.brand').textContent, /LaoshiKu/);
+  assert.match(d.querySelector('.page-head').textContent, /Pelajar/);
   assert.deepEqual(errors, []);
 });
