@@ -1,0 +1,14 @@
+{
+    email {$ACME_EMAIL}
+}
+{$DOMAIN} {
+    encode zstd gzip
+    request_body {
+        max_size 10MB
+    }
+    reverse_proxy app:3000 {
+        transport http {
+            response_header_timeout 240s
+        }
+    }
+}

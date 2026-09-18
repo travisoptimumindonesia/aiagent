@@ -1,0 +1,38 @@
+{
+  "name": "mandarin-studio",
+  "version": "1.0.0",
+  "description": "Portal kursus Mandarin, Hanzi, FSRS, tugas, dan tutor WhatsApp",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "test": "node --test test/*.test.js",
+    "check": "node --check src/app.js && node --check src/worker.js && node --check public/app.js",
+    "backup": "bash scripts/backup.sh"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "hanzi-writer": "^3.7.3",
+    "hanzi-writer-data": "^2.0.1",
+    "helmet": "^8.3.0",
+    "multer": "^2.4.0",
+    "pinyin-pro": "^3.29.4",
+    "ts-fsrs": "^5.4.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.0",
+    "prettier": "^3.6.2",
+    "supertest": "^7.2.2"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

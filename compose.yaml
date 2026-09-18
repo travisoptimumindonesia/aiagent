@@ -1,0 +1,88 @@
+name: mandarin-studio
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      TRUST_PROXY: '1'
+      PORT: '3000'
+      DB_PATH: /app/data/app.sqlite
+      UPLOAD_DIR: /app/data/uploads
+      BRIDGE_URL: http://bridge:8001
+    volumes:
+      - app_data:/app/data
+    ports:
+      - 127.0.0.1:3000:3000
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 1g
+    depends_on:
+      bridge:
+        condition: service_healthy
+  bridge:
+    build: ./services/bridge
+    restart: unless-stopped
+    init: true
+    environment:
+      SERVICE_TOKEN: ${SERVICE_TOKEN:?Run scripts/setup.sh first}
+      WA_PHONE_ID: ${WA_PHONE_ID:-}
+      WA_ACCESS_TOKEN: ${WA_ACCESS_TOKEN:-}
+      WA_GRAPH_VERSION: ${WA_GRAPH_VERSION:-24.0}
+      SPEECHSUPER_APP_KEY: ${SPEECHSUPER_APP_KEY:-}
+      SPEECHSUPER_SECRET_KEY: ${SPEECHSUPER_SECRET_KEY:-}
+      SPEECHSUPER_CORE_TYPE: ${SPEECHSUPER_CORE_TYPE:-}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8001/health',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 1g
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Run scripts/setup.sh first}
+      ACME_EMAIL: ${ACME_EMAIL:?Run scripts/setup.sh first}
+    ports:
+      - 80:80
+      - 443:443
+      - 443:443/udp
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    mem_limit: 256m
+  ocr:
+    profiles: [ocr]
+    build: ./services/ocr
+    restart: unless-stopped
+    init: true
+    environment:
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+      OMP_NUM_THREADS: '2'
+    volumes:
+      - ocr_models:/home/app/.paddlex
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8002/health',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 4g
+volumes:
+  app_data:
+  caddy_data:
+  caddy_config:
+  ocr_models:

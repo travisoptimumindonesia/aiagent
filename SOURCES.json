@@ -1,0 +1,43 @@
+{
+  "reviewed": "2026-09-18",
+  "repository": "travisoptimumindonesia/aiagent",
+  "branch": "main",
+  "forks": [
+    {
+      "repository": "travisoptimumindonesia/pywa",
+      "reviewed_head": "0bcf2f192ff3cf8ae24a425d85f4295e3cca7a62"
+    },
+    {
+      "repository": "travisoptimumindonesia/hanzi-writer",
+      "reviewed_head": "83a762374e2344f2fb8cceca4a2ac5dfeca386f5"
+    },
+    {
+      "repository": "travisoptimumindonesia/hanzi-writer-data",
+      "reviewed_head": "68d10a4b21150cae5e1ebbd223eed289cf32d90c"
+    },
+    {
+      "repository": "travisoptimumindonesia/hanziguide",
+      "reviewed_head": "e2eb05ba56186549169cb6251978f85bc9a11aad"
+    },
+    {
+      "repository": "travisoptimumindonesia/paddleocr",
+      "reviewed_head": "dab3fe35379033fdcb2d0e9572fac0b36c9a9ebf"
+    },
+    {
+      "repository": "travisoptimumindonesia/ts-fsrs",
+      "reviewed_head": "c8ca282edc3fe1cdfa1c24912437938b63a25cb3"
+    }
+  ],
+  "note": "Reviewed fork heads are provenance, not runtime dependency refs. Runtime packages are pinned in package-lock.json and Python requirements.",
+  "migration": {
+    "status": "uploaded_to_private_repository",
+    "source_repository": "travisoptimumindonesia/hanziguide",
+    "source_branch": "mandarin-platform",
+    "source_commit": "713c844620910be244cbd186f28c6209dfe27e71",
+    "source_subdirectory": "platform",
+    "target_repository": "travisoptimumindonesia/aiagent",
+    "intended_project_name": "mandarin-studio",
+    "visibility_verified_before_upload": "private",
+    "note": "The repository may be renamed to mandarin-studio from GitHub settings without changing application package identity."
+  }
+}
