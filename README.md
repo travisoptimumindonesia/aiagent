@@ -40,7 +40,7 @@ Dependensi runtime menggunakan rilis paket yang dikunci, **bukan otomatis mengam
 Target: satu server Linux **amd64**, Docker Engine + Docker Compose plugin, domain dengan DNS A/AAAA menuju server, port 80/443 terbuka. Perkiraan awal 2 vCPU/4 GB RAM tanpa OCR; 4 vCPU/8 GB RAM dengan OCR. Ini perkiraan, bukan hasil load test. Jangan jalankan lebih dari satu instance app/worker pada database SQLite yang sama.
 
 ```bash
-git clone git@github.com:travisoptimumindonesia/aiagent.git
+git clone git@github.com:travisoptimumindonesia/aiagent.git mandarin-studio
 cd mandarin-studio
 bash scripts/setup.sh
 bash scripts/deploy.sh
